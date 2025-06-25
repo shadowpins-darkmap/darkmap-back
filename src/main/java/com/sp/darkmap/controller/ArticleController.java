@@ -9,7 +9,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-@CrossOrigin(origins = "https://kdark.weareshadowpins.com")
 @RequiredArgsConstructor
 @RestController
 public class ArticleController {
