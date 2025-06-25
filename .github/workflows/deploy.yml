@@ -22,6 +22,14 @@ jobs:
       - name: Grant execute permission to gradlew
         run: chmod +x gradlew
 
+      - name: Debug environment variables
+        run: |
+          echo "DB_URL: $DB_URL"
+          echo "DB_USERNAME: $DB_USERNAME"
+        env:
+          DB_URL: ${{ secrets.DB_URL }}
+          DB_USERNAME: ${{ secrets.DB_USERNAME }}
+
       - name: Build with Gradle
         run: ./gradlew clean build test
         env:
