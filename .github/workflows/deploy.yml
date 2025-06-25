@@ -1,18 +1,20 @@
-name: Deploy to EC2 with Dynamic IP Access
+name: Deploy to EC2
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "**" ]
+  workflow_dispatch:
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. 현재 GitHub Actions의 퍼블릭 IP 확인
+      # 1. GitHub Actions 퍼블릭 IP 추출
       - name: Get GitHub Actions IP
         id: ip
-        uses: haythem/public-ip@v1.2
+        run: |
+          echo "ipv4=$(curl -s https://api.ipify.org)" >> $GITHUB_OUTPUT
 
       # 2. AWS 자격 증명 구성
       - name: Configure AWS Credentials
@@ -22,7 +24,7 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ap-northeast-2
 
-      # 3. 보안 그룹에 IP 등록 (포트 22)
+      # 3. 보안 그룹에 퍼블릭 IP 등록 (포트 22 허용)
       - name: Add GitHub IP to Security Group
         run: |
           aws ec2 authorize-security-group-ingress \
