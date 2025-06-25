@@ -32,8 +32,7 @@ public class SecurityConfig {
                 .cors(withDefaults())
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/articles/","/articles/*", "/api/v1/auth/**").permitAll()
-                        .anyRequest().authenticated()
+                        .anyRequest().permitAll() // 임시로 모든 요청 허용
                 )
                 .oauth2Login(oauth -> oauth
                         .successHandler(oAuth2LoginSuccessHandler)
