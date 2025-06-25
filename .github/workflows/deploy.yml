@@ -44,7 +44,23 @@ jobs:
             if [ -n "$PID" ]; then
               kill -9 $PID
             fi
+
             export DB_URL=${{ secrets.DB_URL }}
             export DB_USERNAME=${{ secrets.DB_USERNAME }}
             export DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+
+            export JWT_SECRET=${{ secrets.JWT_SECRET }}
+            export FRONTEND_REDIRECT_URL=${{ secrets.FRONTEND_REDIRECT_URL }}
+
+            export KAKAO_CLIENT_ID=${{ secrets.KAKAO_CLIENT_ID }}
+            export KAKAO_TOKEN_URI=${{ secrets.KAKAO_TOKEN_URI }}
+            export KAKAO_REDIRECT_URI=${{ secrets.KAKAO_REDIRECT_URI }}
+
+            export GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
+            export GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
+            export GOOGLE_REDIRECT_URI=${{ secrets.GOOGLE_REDIRECT_URI }}
+            export GOOGLE_AUTH_URI=${{ secrets.GOOGLE_AUTH_URI }}
+            export GOOGLE_TOKEN_URI=${{ secrets.GOOGLE_TOKEN_URI }}
+            export GOOGLE_USER_INFO_URI=${{ secrets.GOOGLE_USER_INFO_URI }}
+
             nohup java -jar /home/ubuntu/app/build/libs/darkmap-0.0.1-SNAPSHOT.jar > /home/ubuntu/app/app.log 2>&1 &
