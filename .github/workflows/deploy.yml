@@ -40,5 +40,9 @@ jobs:
           username: ubuntu
           key: ${{ secrets.EC2_PRIVATE_KEY }}
           script: |
-            kill -9 $(lsof -t -i :8081) || true
-            nohup java -jar /home/ubuntu/app/*.jar > /home/ubuntu/app/app.log 2>&1 &
+            PID=$(lsof -t -i :8081)
+            if [ -n "$PID" ]; then
+            kill -9 $PID
+            fi
+            JAR=$(ls /home/ubuntu/app/*SNAPSHOT.jar | head -n 1)
+            nohup java -jar "$JAR" > /home/ubuntu/app/app.log 2>&1 &
