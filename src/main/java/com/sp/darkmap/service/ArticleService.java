@@ -28,12 +28,4 @@ public class ArticleService {
         List<Article> articles = articleSaveRequestList.stream().map(articleConverter::toEntity).toList();
         articleRepository.saveAll(articles);
     }
-
-    @Transactional(readOnly = true)
-    public List<ArticleListResponse> getArticlesBySido(String sido) {
-        List<Article> articles = articleRepository.findBySido(sido);
-        return articles.stream()
-                .map(articleConverter::toResponse)
-                .toList();
-    }
 }

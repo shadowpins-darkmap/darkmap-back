@@ -9,7 +9,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-@CrossOrigin(origins = "https://kdark.weareshadowpins.com")
 @RequiredArgsConstructor
 @RestController
 public class ArticleController {
@@ -24,10 +23,5 @@ public class ArticleController {
     @GetMapping("/articles")
     public List<ArticleListResponse> getArticlesList() {
         return articleService.getArticlesList();
-    }
-
-    @GetMapping("/articles/sido")
-    public List<ArticleListResponse> getArticlesBySido(@RequestParam String sido) {
-        return articleService.getArticlesBySido(sido);
     }
 }
