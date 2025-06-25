@@ -1,39 +1,14 @@
-name: Deploy to EC2
+name: Build only
 
 on:
   push:
-    branches: [ "**" ]
-  workflow_dispatch:
+    branches: [ "main" ]
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. GitHub Actions 퍼블릭 IP 추출
-      - name: Get GitHub Actions IP
-        id: ip
-        run: |
-          echo "ipv4=$(curl -s https://api.ipify.org)" >> $GITHUB_OUTPUT
-
-      # 2. AWS 자격 증명 구성
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ap-northeast-2
-
-      # 3. 보안 그룹에 퍼블릭 IP 등록 (포트 22 허용)
-      - name: Add GitHub IP to Security Group
-        run: |
-          aws ec2 authorize-security-group-ingress \
-            --group-id ${{ secrets.AWS_SG_ID }} \
-            --protocol tcp \
-            --port 22 \
-            --cidr ${{ steps.ip.outputs.ipv4 }}/32
-
-      # 4. 코드 체크아웃 및 빌드
       - name: Checkout code
         uses: actions/checkout@v3
 
@@ -43,40 +18,5 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Build without tests (CI only)
+      - name: Build without tests
         run: ./gradlew clean build -x test
-        env:
-          DB_URL: ${{ secrets.DB_URL }}
-          DB_USERNAME: ${{ secrets.DB_USERNAME }}
-          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-
-      # 5. EC2로 JAR 파일 전송
-      - name: Copy JAR to EC2
-        uses: appleboy/scp-action@master
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ubuntu
-          key: ${{ secrets.EC2_PRIVATE_KEY }}
-          source: "build/libs/*.jar"
-          target: "/home/ubuntu/app"
-
-      # 6. EC2에서 JAR 실행
-      - name: Run JAR on EC2
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ubuntu
-          key: ${{ secrets.EC2_PRIVATE_KEY }}
-          script: |
-            pkill -f 'java -jar' || true
-            nohup java -jar /home/ubuntu/app/*.jar > /home/ubuntu/app/app.log 2>&1 &
-
-      # 7. 보안 그룹에서 IP 제거 (항상 실행)
-      - name: Remove GitHub IP from Security Group
-        if: always()
-        run: |
-          aws ec2 revoke-security-group-ingress \
-            --group-id ${{ secrets.AWS_SG_ID }} \
-            --protocol tcp \
-            --port 22 \
-            --cidr ${{ steps.ip.outputs.ipv4 }}/32
