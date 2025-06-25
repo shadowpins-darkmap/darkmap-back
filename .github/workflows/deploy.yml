@@ -44,4 +44,7 @@ jobs:
             if [ -n "$PID" ]; then
               kill -9 $PID
             fi
+            export DB_URL=${{ secrets.DB_URL }}
+            export DB_USERNAME=${{ secrets.DB_USERNAME }}
+            export DB_PASSWORD=${{ secrets.DB_PASSWORD }}
             nohup java -jar /home/ubuntu/app/build/libs/darkmap-0.0.1-SNAPSHOT.jar > /home/ubuntu/app/app.log 2>&1 &
