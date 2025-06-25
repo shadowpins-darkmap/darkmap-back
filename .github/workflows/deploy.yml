@@ -40,4 +40,5 @@ jobs:
           username: ubuntu
           key: ${{ secrets.EC2_PRIVATE_KEY }}
           script: |
+            kill -9 $(lsof -t -i :8081) || true
             nohup java -jar /home/ubuntu/app/build/lib/*SNAPSHOT.jar > /home/ubuntu/app/app.log 2>&1 &
