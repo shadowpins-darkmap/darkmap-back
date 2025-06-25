@@ -24,4 +24,9 @@ public class ArticleController {
     public List<ArticleListResponse> getArticlesList() {
         return articleService.getArticlesList();
     }
+
+    @GetMapping("/articles/sido")
+    public List<ArticleListResponse> getArticlesBySido(@RequestParam String sido) {
+        return articleService.getArticlesBySido(sido);
+    }
 }
