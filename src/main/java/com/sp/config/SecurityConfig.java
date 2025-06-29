@@ -17,7 +17,6 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import java.util.List;
 
 import static org.springframework.security.config.Customizer.withDefaults;
-
 @Configuration
 @RequiredArgsConstructor
 public class SecurityConfig {
@@ -32,7 +31,7 @@ public class SecurityConfig {
                 .cors(withDefaults())
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-                        .anyRequest().permitAll() // 임시로 모든 요청 허용
+                        .anyRequest().permitAll()
                 )
                 .oauth2Login(oauth -> oauth
                         .successHandler(oAuth2LoginSuccessHandler)
@@ -47,14 +46,17 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
 
-        config.setAllowedOrigins(List.of("https://kdark.weareshadowpins.com"));
+        config.setAllowedOrigins(List.of(
+                "https://kdark.weareshadowpins.com",
+                "https://darkmap-pi.vercel.app"
+        ));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
         config.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", config); // 모든 요청 경로
+        source.registerCorsConfiguration("/**", config);
         return source;
     }
 }
