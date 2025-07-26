@@ -1,0 +1,346 @@
+package com.sp.community.persistent.entity;
+
+import jakarta.persistence.*;
+import lombok.*;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+
+@Entity
+@Table(name = "community_board")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+@ToString(exclude = {"files", "likes", "reports", "comments"}) // 순환참조 방지
+public class BoardEntity {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "board_id")
+    private Long boardId;
+
+    @Column(name = "title", nullable = false, length = 200)
+    private String title;
+
+    @Column(name = "content", nullable = false, columnDefinition = "TEXT")
+    private String content;
+
+    @Column(name = "author_id", nullable = false, length = 50)
+    private String authorId;
+
+    @Column(name = "author_nickname", nullable = false, length = 50)
+    private String authorNickname;
+
+    @Column(name = "category", nullable = false, length = 50)
+    private String category;
+
+    @Builder.Default
+    @Column(name = "view_count", nullable = false, columnDefinition = "int default 0")
+    private Integer viewCount = 0;
+
+    @Builder.Default
+    @Column(name = "like_count", nullable = false, columnDefinition = "int default 0")
+    private Integer likeCount = 0;
+
+    @Builder.Default
+    @Column(name = "comment_count", nullable = false, columnDefinition = "int default 0")
+    private Integer commentCount = 0;
+
+    @Builder.Default
+    @Column(name = "is_notice", nullable = false, columnDefinition = "boolean default false")
+    private Boolean isNotice = false;
+
+    @Builder.Default
+    @Column(name = "is_reported", nullable = false, columnDefinition = "boolean default false")
+    private Boolean isReported = false;
+
+    @Builder.Default
+    @Column(name = "is_deleted", nullable = false, columnDefinition = "boolean default false")
+    private Boolean isDeleted = false;
+
+    @Column(name = "created_at", nullable = false)
+    private LocalDateTime createdAt;
+
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+
+    // 연관관계 매핑
+    @Builder.Default
+    @OneToMany(mappedBy = "board", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<BoardFileEntity> files = new ArrayList<>();
+
+    @Builder.Default
+    @OneToMany(mappedBy = "board", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<BoardLikeEntity> likes = new ArrayList<>();
+
+    @Builder.Default
+    @OneToMany(mappedBy = "board", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<BoardReportEntity> reports = new ArrayList<>();
+
+    @Builder.Default
+    @OneToMany(mappedBy = "board", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<CommentEntity> comments = new ArrayList<>();
+
+    // JPA 콜백 메서드
+    @PrePersist
+    public void prePersist() {
+        if (this.createdAt == null) {
+            this.createdAt = LocalDateTime.now();
+        }
+        if (this.viewCount == null) {
+            this.viewCount = 0;
+        }
+        if (this.likeCount == null) {
+            this.likeCount = 0;
+        }
+        if (this.commentCount == null) {
+            this.commentCount = 0;
+        }
+        if (this.isNotice == null) {
+            this.isNotice = false;
+        }
+        if (this.isReported == null) {
+            this.isReported = false;
+        }
+        if (this.isDeleted == null) {
+            this.isDeleted = false;
+        }
+    }
+
+    @PreUpdate
+    public void preUpdate() {
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    // 비즈니스 로직 메서드
+
+    /**
+     * 조회수 증가
+     */
+    public void incrementViewCount() {
+        this.viewCount++;
+    }
+
+    /**
+     * 좋아요 수 증가
+     */
+    public void incrementLikeCount() {
+        this.likeCount++;
+    }
+
+    /**
+     * 좋아요 수 감소
+     */
+    public void decrementLikeCount() {
+        if (this.likeCount > 0) {
+            this.likeCount--;
+        }
+    }
+
+    /**
+     * 댓글 수 증가
+     */
+    public void incrementCommentCount() {
+        this.commentCount++;
+    }
+
+    /**
+     * 댓글 수 감소
+     */
+    public void decrementCommentCount() {
+        if (this.commentCount > 0) {
+            this.commentCount--;
+        }
+    }
+
+    /**
+     * 게시글 전체 정보 수정 (제목, 내용, 카테고리)
+     */
+    public void updateBoard(String title, String content, String category) {
+        this.title = title;
+        this.content = content;
+        this.category = category;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * 게시글 내용 수정
+     */
+    public void updateContent(String title, String content) {
+        this.title = title;
+        this.content = content;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * 게시글 카테고리 변경
+     */
+    public void updateCategory(String category) {
+        this.category = category;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * 신고 처리
+     */
+    public void markAsReported() {
+        this.isReported = true;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * 신고 해제
+     */
+    public void unmarkAsReported() {
+        this.isReported = false;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * 공지글로 설정
+     */
+    public void markAsNotice() {
+        this.isNotice = true;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * 공지글 해제
+     */
+    public void unmarkAsNotice() {
+        this.isNotice = false;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * 소프트 삭제
+     */
+    public void softDelete() {
+        this.isDeleted = true;
+        this.deletedAt = LocalDateTime.now();
+    }
+
+    /**
+     * 삭제 복원
+     */
+    public void restore() {
+        this.isDeleted = false;
+        this.deletedAt = null;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    // 연관관계 편의 메서드
+
+    /**
+     * 파일 추가
+     */
+    public void addFile(BoardFileEntity file) {
+        if (files == null) {
+            files = new ArrayList<>();
+        }
+        files.add(file);
+        file.setBoard(this);
+    }
+
+    /**
+     * 파일 제거
+     */
+    public void removeFile(BoardFileEntity file) {
+        if (files != null) {
+            files.remove(file);
+            file.setBoard(null);
+        }
+    }
+
+    /**
+     * 좋아요 추가
+     */
+    public void addLike(BoardLikeEntity like) {
+        if (likes == null) {
+            likes = new ArrayList<>();
+        }
+        likes.add(like);
+        like.setBoard(this);
+        incrementLikeCount();
+    }
+
+    /**
+     * 좋아요 제거
+     */
+    public void removeLike(BoardLikeEntity like) {
+        if (likes != null) {
+            likes.remove(like);
+            like.setBoard(null);
+            decrementLikeCount();
+        }
+    }
+
+    /**
+     * 신고 추가
+     */
+    public void addReport(BoardReportEntity report) {
+        if (reports == null) {
+            reports = new ArrayList<>();
+        }
+        reports.add(report);
+        report.setBoard(this);
+    }
+
+    /**
+     * 댓글 추가
+     */
+    public void addComment(CommentEntity comment) {
+        if (comments == null) {
+            comments = new ArrayList<>();
+        }
+        comments.add(comment);
+        comment.setBoard(this);
+        incrementCommentCount();
+    }
+
+    /**
+     * 댓글 제거
+     */
+    public void removeComment(CommentEntity comment) {
+        if (comments != null) {
+            comments.remove(comment);
+            comment.setBoard(null);
+            decrementCommentCount();
+        }
+    }
+
+    // 유틸리티 메서드
+
+    /**
+     * 게시글이 삭제되었는지 확인
+     */
+    public boolean isDeleted() {
+        return this.isDeleted != null && this.isDeleted;
+    }
+
+    /**
+     * 게시글이 공지글인지 확인
+     */
+    public boolean isNotice() {
+        return this.isNotice != null && this.isNotice;
+    }
+
+    /**
+     * 게시글이 신고된 상태인지 확인
+     */
+    public boolean isReported() {
+        return this.isReported != null && this.isReported;
+    }
+
+    /**
+     * 특정 사용자가 작성한 게시글인지 확인
+     */
+    public boolean isAuthor(String userId) {
+        return this.authorId != null && this.authorId.equals(userId);
+    }
+}
