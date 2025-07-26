@@ -42,14 +42,12 @@ public class BoardCreateDTO {
     /**
      * 작성자 ID
      */
-    @NotBlank(message = "작성자 ID는 필수입니다.")
     @Size(max = 50, message = "작성자 ID는 50자 이하로 입력해주세요.")
     private String authorId;
 
     /**
      * 작성자 닉네임
      */
-    @NotBlank(message = "작성자 닉네임은 필수입니다.")
     @Size(max = 50, message = "작성자 닉네임은 50자 이하로 입력해주세요.")
     private String authorNickname;
 
