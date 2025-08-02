@@ -8,6 +8,8 @@ import lombok.Getter;
 @Builder
 public class AuthResponse {
     private String jwtToken;
+    private String refreshToken;
+    private Long expiresIn;
     private String email;
     private String userId;
     private String nickname;
