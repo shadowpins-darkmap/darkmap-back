@@ -131,7 +131,7 @@ public class AuthController {
 
     private String buildTokenRedirectUrl(String accessToken) {
         // 임시
-        return "https://darkmap-pi.vercel.app?success=true&token=" + accessToken;
+        return "https://darkmap-pi.vercel.app/social-redirect?success=true&token=" + accessToken;
         //return "https://kdark.weareshadowpins.com?success=true&token=" + accessToken;
         //return "https://localhost:8080?success=true&token=" + accessToken;
     }

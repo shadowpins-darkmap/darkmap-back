@@ -61,9 +61,9 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
 
         response.addHeader("Set-Cookie", refreshCookie.toString());
 
-        // Access Token은 프론트엔드로 안전하게 전달
-        //String redirectUrl = "https://kdark.weareshadowpins.com/?success=true&token=" + accessToken;
-        String redirectUrl = "https://darkmap-pi.vercel.app?success=true&token=" + accessToken;
+        // 프론트에서 리다이렉트
+        //String redirectUrl = "https://kdark.weareshadowpins.com/social-redirect?success=true&token=" + accessToken;
+        String redirectUrl = "https://darkmap-pi.vercel.app/social-redirect?success=true&token=" + accessToken;
         response.sendRedirect(redirectUrl);
     }
 }
