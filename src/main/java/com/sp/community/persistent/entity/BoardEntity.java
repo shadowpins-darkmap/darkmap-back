@@ -35,6 +35,11 @@ public class BoardEntity {
 
     @Column(name = "category", nullable = false, length = 50)
     private String category;
+    //공지 NOTICE
+    //기억 MEMORY
+    //고민 WORRY
+    //질문 ASK
+    //미분류 ETC
 
     @Builder.Default
     @Column(name = "view_count", nullable = false, columnDefinition = "int default 0")
@@ -159,7 +164,7 @@ public class BoardEntity {
     }
 
     /**
-     * 게시글 전체 정보 수정 (제목, 내용, 카테고리)
+     * 게시글 전체 정보 수정 (제목, 내용, 카테고리, 수정자)
      */
     public void updateBoard(String title, String content, String category) {
         this.title = title;

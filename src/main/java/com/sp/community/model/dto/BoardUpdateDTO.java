@@ -48,7 +48,6 @@ public class BoardUpdateDTO {
     /**
      * 수정자 ID (작성자와 동일해야 함)
      */
-    @NotBlank(message = "수정자 ID는 필수입니다.")
     @Size(max = 50, message = "수정자 ID는 50자 이하로 입력해주세요.")
     private String editorId;
 

@@ -14,6 +14,7 @@ import com.sp.community.persistent.repository.BoardRepository;
 import com.sp.community.persistent.repository.BoardLikeRepository;
 import com.sp.community.persistent.repository.CommentRepository;
 import com.sp.community.model.response.FileUploadResponse;
+import com.sp.member.persistent.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -42,6 +43,7 @@ public class BoardService {
     private final CommentRepository commentRepository;
     private final FileService fileService;
     private final BoardLikeService boardLikeService;
+    private final MemberRepository memberRepository;
 
     /**
      * 게시글 생성
@@ -50,37 +52,33 @@ public class BoardService {
     public BoardVO createBoard(BoardCreateDTO createDTO) {
         log.info("게시글 생성 시작: {}", createDTO.getTitle());
 
-        // DTO 검증
         createDTO.validate();
 
-        // Entity 생성
+        String nickname = memberRepository.findNicknameByMemberId(createDTO.getAuthorId())
+                .orElse(createDTO.getAuthorId());
+
         BoardEntity boardEntity = BoardEntity.builder()
                 .title(createDTO.getTrimmedTitle())
                 .content(createDTO.getTrimmedContent())
                 .authorId(createDTO.getAuthorId())
-                .authorNickname(createDTO.getAuthorNickname())
+                .authorNickname(nickname)
                 .category(createDTO.getNormalizedCategory())
                 .isNotice(createDTO.getIsNotice())
                 .build();
 
-        // 게시글 저장
         BoardEntity savedBoard = boardRepository.save(boardEntity);
 
-        // 이미지 파일 업로드 처리
         if (createDTO.hasImage()) {
             try {
                 MultipartFile imageFile = createDTO.getImageFile();
-                FileUploadResponse uploadResponse = fileService.uploadImageForBoard(savedBoard.getBoardId(), imageFile);
+                FileUploadResponse uploadResponse =
+                        fileService.uploadImageForBoard(savedBoard.getBoardId(), imageFile);
                 log.info("게시글 이미지 업로드 완료: boardId={}, fileName={}",
                         savedBoard.getBoardId(), uploadResponse.getStoredFileName());
             } catch (Exception e) {
                 log.error("게시글 이미지 업로드 실패: boardId={}", savedBoard.getBoardId(), e);
-                // 이미지 업로드 실패 시에도 게시글은 생성되도록 처리
-                // 필요에 따라 예외를 던져서 롤백할 수도 있음
             }
         }
-
-        log.info("게시글 생성 완료: ID={}", savedBoard.getBoardId());
 
         return convertToVO(savedBoard);
     }
@@ -92,35 +90,26 @@ public class BoardService {
     public BoardVO updateBoard(BoardUpdateDTO updateDTO) {
         log.info("게시글 수정 시작: ID={}", updateDTO.getBoardId());
 
-        // DTO 검증
         updateDTO.validate();
 
-        // 게시글 조회
         BoardEntity boardEntity = boardRepository.findByIdAndNotDeleted(updateDTO.getBoardId())
+
                 .orElseThrow(() -> new BoardNotFoundException("게시글을 찾을 수 없습니다."));
-
-        // 수정 권한 확인
         validateEditPermission(boardEntity, updateDTO.getEditorId());
-
-        // 게시글 정보 업데이트
         boardEntity.updateBoard(
                 updateDTO.getTrimmedTitle(),
                 updateDTO.getTrimmedContent(),
                 updateDTO.getNormalizedCategory()
         );
 
-        // 옵션 정보 업데이트
         if (updateDTO.getIsNotice() != null) {
             boardEntity.setIsNotice(updateDTO.getIsNotice());
         }
 
-        // 이미지 변경 처리
         processImageChanges(boardEntity, updateDTO);
 
         BoardEntity savedBoard = boardRepository.save(boardEntity);
-
         log.info("게시글 수정 완료: ID={}", savedBoard.getBoardId());
-
         return convertToVO(savedBoard);
     }
 
@@ -130,18 +119,11 @@ public class BoardService {
     @Transactional
     public BoardDetailVO getBoardDetail(Long boardId, String currentUserId) {
         log.debug("게시글 상세 조회: ID={}", boardId);
-
-        // 게시글 조회
         BoardEntity boardEntity = boardRepository.findByIdAndNotDeleted(boardId)
                 .orElseThrow(() -> new BoardNotFoundException("게시글을 찾을 수 없습니다."));
-
-        // 조회수 증가
         boardRepository.incrementViewCount(boardId);
         boardEntity.incrementViewCount();
-
-        // 상세 VO 변환
         BoardDetailVO detailVO = convertToDetailVO(boardEntity, currentUserId);
-
         return detailVO;
     }
 
@@ -150,30 +132,19 @@ public class BoardService {
      */
     public BoardListVO getBoardList(BoardSearchDTO searchDTO, PageRequestDTO pageRequestDTO) {
         log.debug("게시글 목록 조회: {}", searchDTO);
-
-        // 검색 조건 검증
         if (searchDTO != null) {
             searchDTO.validate();
         }
-
-        // 페이징 정보 설정
         if (pageRequestDTO != null) {
             pageRequestDTO.setDefaults();
         }
-
         Pageable pageable = pageRequestDTO != null ?
                 pageRequestDTO.toBoardPageable() :
                 PageRequestDTO.builder().build().toBoardPageable();
-
-        // 게시글 조회
         Page<BoardEntity> boardPage = searchBoards(searchDTO, pageable);
-
-        // VO 변환
         List<BoardVO> boardVOs = boardPage.getContent().stream()
                 .map(this::convertToVO)
                 .collect(Collectors.toList());
-
-        // 목록 VO 구성
         return BoardListVO.builder()
                 .boards(boardVOs)
                 .pageInfo(createPageInfo(boardPage))
@@ -187,26 +158,16 @@ public class BoardService {
     @Transactional
     public void deleteBoard(Long boardId, String currentUserId) {
         log.info("게시글 삭제 시작: ID={}", boardId);
-
-        // 게시글 조회
         BoardEntity boardEntity = boardRepository.findByIdAndNotDeleted(boardId)
                 .orElseThrow(() -> new BoardNotFoundException("게시글을 찾을 수 없습니다."));
-
-        // 삭제 권한 확인
         validateDeletePermission(boardEntity, currentUserId);
-
-        // 연관된 이미지 파일 삭제
         try {
             fileService.deleteBoardImage(boardId);
             log.info("게시글 이미지 삭제 완료: boardId={}", boardId);
         } catch (Exception e) {
             log.warn("게시글 이미지 삭제 실패 (계속 진행): boardId={}", boardId, e);
         }
-
-        // 소프트 삭제
         boardEntity.softDelete();
-
-        // 연관된 댓글들도 삭제
         commentRepository.deleteAllByBoardId(boardId);
 
         boardRepository.save(boardEntity);
@@ -220,14 +181,10 @@ public class BoardService {
     @Transactional
     public void deleteBoardImage(Long boardId, String currentUserId) {
         log.info("게시글 이미지 삭제 시작: boardId={}", boardId);
-
-        // 게시글 조회 및 권한 확인
         BoardEntity boardEntity = boardRepository.findByIdAndNotDeleted(boardId)
                 .orElseThrow(() -> new BoardNotFoundException("게시글을 찾을 수 없습니다."));
 
         validateEditPermission(boardEntity, currentUserId);
-
-        // 이미지 파일 삭제
         fileService.deleteBoardImage(boardId);
 
         log.info("게시글 이미지 삭제 완료: boardId={}", boardId);
