@@ -107,4 +107,49 @@ public class MemberController {
                 "timestamp", System.currentTimeMillis()
         ));
     }
+
+    @PutMapping("/nickname")
+    public ResponseEntity<?> updateNickname(
+            @Parameter(hidden = true) @AuthenticationPrincipal Long memberId,
+            @RequestBody Map<String, String> request) {
+
+        if (memberId == null) {
+            return ResponseEntity.status(401).body(Map.of(
+                    "error", "인증이 필요합니다.",
+                    "code", "UNAUTHORIZED"
+            ));
+        }
+
+        String newNickname = request.get("nickname");
+        if (newNickname == null || newNickname.trim().isEmpty()) {
+            return ResponseEntity.status(400).body(Map.of(
+                    "error", "닉네임을 입력해주세요.",
+                    "code", "INVALID_INPUT"
+            ));
+        }
+
+        try {
+            Member updatedMember = memberService.updateNickname(memberId, newNickname.trim());
+
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "data", Map.of(
+                            "id", updatedMember.getId(),
+                            "nickname", updatedMember.getNickname()
+                    ),
+                    "message", "닉네임이 성공적으로 변경되었습니다."
+            ));
+
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(400).body(Map.of(
+                    "error", e.getMessage(),
+                    "code", "INVALID_NICKNAME"
+            ));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(409).body(Map.of(
+                    "error", e.getMessage(),
+                    "code", "NICKNAME_DUPLICATE"
+            ));
+        }
+    }
 }
