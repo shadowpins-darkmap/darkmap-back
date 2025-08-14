@@ -115,7 +115,7 @@ public class MemberController {
     }
 
     @Operation(
-            summary = "닉네임 수정",
+            summary = "닉네임 수정 ",
             description = "현재 로그인한 사용자의 닉네임을 수정합니다. 30일마다 1회, 총 3회까지 변경 가능합니다.",
             security = @SecurityRequirement(name = "Bearer Authentication")
     )
