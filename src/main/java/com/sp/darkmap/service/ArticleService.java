@@ -3,6 +3,7 @@ package com.sp.darkmap.service;
 import com.sp.darkmap.converter.ArticleConverter;
 import com.sp.darkmap.model.vo.ArticleListResponse;
 import com.sp.darkmap.model.vo.ArticleSaveRequest;
+import com.sp.darkmap.model.vo.SidoCountResponse;
 import com.sp.darkmap.persistent.entity.Article;
 import com.sp.darkmap.persistent.repository.ArticleRepository;
 import lombok.RequiredArgsConstructor;
@@ -35,5 +36,9 @@ public class ArticleService {
         return articles.stream()
                 .map(articleConverter::toResponse)
                 .toList();
+    }
+
+    public List<SidoCountResponse> getSidoStatistics() {
+        return articleRepository.countBySido();
     }
 }

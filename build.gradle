@@ -22,39 +22,51 @@ repositories {
 }
 
 dependencies {
+	// 기본 Spring Boot 의존성
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 	implementation 'org.springframework.boot:spring-boot-starter-web'
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
+	implementation 'org.springframework.boot:spring-boot-starter-security'
+	implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
+
 	compileOnly 'org.projectlombok:lombok'
-	runtimeOnly 'org.mariadb.jdbc:mariadb-java-client'
 	annotationProcessor 'org.projectlombok:lombok'
 
+	implementation 'org.mariadb.jdbc:mariadb-java-client'
+
+	// MapStruct
 	implementation 'org.mapstruct:mapstruct:1.6.3'
 	annotationProcessor 'org.mapstruct:mapstruct-processor:1.6.3'
-	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 
+	// OpenAPI/Swagger
 	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.5.0'
 
-	// Spring Security
-	implementation 'org.springframework.boot:spring-boot-starter-security'
 
-	// Jackson core
-	implementation 'com.fasterxml.jackson.core:jackson-databind:2.15.2'
-
-	// Optional: JSON 파싱 편의용
-	implementation 'com.fasterxml.jackson.core:jackson-core'
-	implementation 'com.fasterxml.jackson.core:jackson-annotations'
-
-	// jwt token
+	// JWT
 	implementation 'io.jsonwebtoken:jjwt-api:0.11.5'
 	runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.11.5'
 	runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.11.5'
 
-	// Google social login
-	implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
-	implementation 'org.springframework.boot:spring-boot-starter-security'
-	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-	implementation 'org.mariadb.jdbc:mariadb-java-client'
+	// 파일 업로드 관련 의존성
+	// AWS S3 (클라우드 파일 저장소)
+	implementation 'org.springframework.cloud:spring-cloud-starter-aws:2.2.6.RELEASE'
+	implementation 'com.amazonaws:aws-java-sdk-s3:1.12.470'
+
+	// 이미지 처리 (썸네일 생성 등)
+	implementation 'org.imgscalr:imgscalr-lib:4.2'
+
+	// 파일 타입 감지
+	implementation 'org.apache.tika:tika-core:2.8.0'
+
+	// 파일 압축/해제 (Optional)
+	implementation 'org.apache.commons:commons-compress:1.23.0'
+
+	// Apache Commons FileUpload (멀티파트 파일 처리 향상)
+	implementation 'commons-fileupload:commons-fileupload:1.5'
+	implementation 'commons-io:commons-io:2.11.0'
+
+	// Test
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 }
 
 tasks.named('test') {

@@ -2,9 +2,11 @@ package com.sp.darkmap.controller;
 
 import com.sp.darkmap.model.vo.ArticleListResponse;
 import com.sp.darkmap.model.vo.ArticleSaveRequest;
+import com.sp.darkmap.model.vo.SidoCountResponse;
 import com.sp.darkmap.service.ArticleService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -28,5 +30,11 @@ public class ArticleController {
     @GetMapping("/articles/sido")
     public List<ArticleListResponse> getArticlesBySido(@RequestParam String sido) {
         return articleService.getArticlesBySido(sido);
+    }
+
+    @GetMapping("/articles/sido/count")
+    public ResponseEntity<List<SidoCountResponse>> getSidoStatistics() {
+        List<SidoCountResponse> statistics = articleService.getSidoStatistics();
+        return ResponseEntity.ok(statistics);
     }
 }
