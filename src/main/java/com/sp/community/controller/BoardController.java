@@ -109,15 +109,12 @@ public class BoardController {
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<CommonApiResponse<BoardVO>> createBoard(
             @Parameter(description = "게시글 생성 정보") @Valid @ModelAttribute BoardCreateDTO createDTO,
-            @AuthenticationPrincipal UserDetails userDetails) {
+            @AuthenticationPrincipal Long memberId) {
 
         log.info("게시글 생성 요청: title={}, authorId={}", createDTO.getTitle(), createDTO.getAuthorId());
 
         // 현재 사용자 정보 설정
-        if (userDetails != null) {
-            createDTO.setAuthorId(userDetails.getUsername());
-            // 닉네임은 사용자 서비스에서 조회하여 설정 (향후 구현)
-        }
+        createDTO.setAuthorId(memberId+"");
 
         BoardVO createdBoard = boardService.createBoard(createDTO);
 
@@ -144,7 +141,7 @@ public class BoardController {
     public ResponseEntity<CommonApiResponse<BoardVO>> updateBoard(
             @Parameter(description = "게시글 ID") @PathVariable Long boardId,
             @Parameter(description = "게시글 수정 정보") @Valid @ModelAttribute BoardUpdateDTO updateDTO,
-            @AuthenticationPrincipal UserDetails userDetails) {
+            @AuthenticationPrincipal Long memberId) {
 
         log.info("게시글 수정 요청: boardId={}", boardId);
 
@@ -152,9 +149,7 @@ public class BoardController {
         updateDTO.setBoardId(boardId);
 
         // 현재 사용자 정보 설정
-        if (userDetails != null) {
-            updateDTO.setEditorId(userDetails.getUsername());
-        }
+        updateDTO.setEditorId(memberId+"");
 
         BoardVO updatedBoard = boardService.updateBoard(updateDTO);
 
@@ -179,12 +174,11 @@ public class BoardController {
     @DeleteMapping("/{boardId}")
     public ResponseEntity<CommonApiResponse<Void>> deleteBoard(
             @Parameter(description = "게시글 ID") @PathVariable Long boardId,
-            @AuthenticationPrincipal UserDetails userDetails) {
+            @AuthenticationPrincipal Long memberId) {
 
         log.info("게시글 삭제 요청: boardId={}", boardId);
 
-        String currentUserId = userDetails != null ? userDetails.getUsername() : null;
-        boardService.deleteBoard(boardId, currentUserId);
+        boardService.deleteBoard(boardId, memberId+"");
 
         return ResponseEntity.ok(
                 CommonApiResponse.<Void>builder()
@@ -253,12 +247,11 @@ public class BoardController {
     @GetMapping("/my")
     public ResponseEntity<CommonApiResponse<BoardListVO>> getMyBoards(
             @Parameter(description = "페이징 정보") @ModelAttribute PageRequestDTO pageRequestDTO,
-            @AuthenticationPrincipal UserDetails userDetails) {
+            @AuthenticationPrincipal Long memberId) {
 
-        String currentUserId = userDetails != null ? userDetails.getUsername() : null;
-        log.info("내 게시글 조회: userId={}", currentUserId);
+        log.info("내 게시글 조회: userId={}", memberId);
 
-        if (currentUserId == null) {
+        if (memberId == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(
                     CommonApiResponse.<BoardListVO>builder()
                             .success(false)
@@ -267,7 +260,7 @@ public class BoardController {
             );
         }
 
-        BoardListVO myBoards = boardService.getUserBoards(currentUserId, pageRequestDTO);
+        BoardListVO myBoards = boardService.getUserBoards(memberId+"", pageRequestDTO);
 
         return ResponseEntity.ok(
                 CommonApiResponse.<BoardListVO>builder()
