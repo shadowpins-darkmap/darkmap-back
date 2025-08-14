@@ -8,6 +8,8 @@ import com.sp.member.persistent.entity.Member;
 import com.sp.member.service.MemberService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -118,11 +120,74 @@ public class MemberController {
             security = @SecurityRequirement(name = "Bearer Authentication")
     )
     @ApiResponses(value = {
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "닉네임 변경 성공"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "잘못된 입력값 (금지어, 길이 등)"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증 실패"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "중복된 닉네임"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "429", description = "변경 제한 (횟수 초과 또는 기간 제한)")
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "닉네임 변경 성공"
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "400",
+                    description = "잘못된 입력값 (금지어, 길이 등)",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    value = """
+                                {
+                                  "success": false,
+                                  "error": "부적절한 단어가 포함된 닉네임입니다.",
+                                  "code": "INVALID_NICKNAME"
+                                }
+                                """
+                            )
+                    )
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "401",
+                    description = "인증 실패",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    value = """
+                                {
+                                  "success": false,
+                                  "error": "인증이 필요합니다.",
+                                  "code": "UNAUTHORIZED"
+                                }
+                                """
+                            )
+                    )
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "409",
+                    description = "중복된 닉네임",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    value = """
+                                {
+                                  "success": false,
+                                  "error": "이미 사용 중인 닉네임입니다.",
+                                  "code": "NICKNAME_DUPLICATE"
+                                }
+                                """
+                            )
+                    )
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "429",
+                    description = "변경 제한 (횟수 초과 또는 기간 제한)",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    value = """
+                                {
+                                  "success": false,
+                                  "error": "닉네임 변경 횟수를 모두 사용했습니다. (최대 3회)",
+                                  "code": "NICKNAME_MAX_COUNT_REACHED"
+                                }
+                                """
+                            )
+                    )
+            )
     })
     @PutMapping("/nickname")
     public ResponseEntity<UpdateNicknameResponse> updateNickname(
