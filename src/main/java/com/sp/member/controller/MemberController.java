@@ -1,6 +1,9 @@
 package com.sp.member.controller;
 
+import com.sp.member.exception.NicknameChangeException;
 import com.sp.member.model.vo.MemberInfoResponse;
+import com.sp.member.model.vo.UpdateNicknameRequest;
+import com.sp.member.model.vo.UpdateNicknameResponse;
 import com.sp.member.persistent.entity.Member;
 import com.sp.member.service.MemberService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -9,6 +12,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -108,48 +112,81 @@ public class MemberController {
         ));
     }
 
+    @Operation(
+            summary = "닉네임 수정",
+            description = "현재 로그인한 사용자의 닉네임을 수정합니다. 30일마다 1회, 총 3회까지 변경 가능합니다.",
+            security = @SecurityRequirement(name = "Bearer Authentication")
+    )
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "닉네임 변경 성공"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "잘못된 입력값 (금지어, 길이 등)"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증 실패"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "중복된 닉네임"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "429", description = "변경 제한 (횟수 초과 또는 기간 제한)")
+    })
     @PutMapping("/nickname")
-    public ResponseEntity<?> updateNickname(
+    public ResponseEntity<UpdateNicknameResponse> updateNickname(
             @Parameter(hidden = true) @AuthenticationPrincipal Long memberId,
-            @RequestBody Map<String, String> request) {
+            @RequestBody @Valid UpdateNicknameRequest request) {
 
         if (memberId == null) {
-            return ResponseEntity.status(401).body(Map.of(
-                    "error", "인증이 필요합니다.",
-                    "code", "UNAUTHORIZED"
-            ));
+            return ResponseEntity.status(401).body(
+                    UpdateNicknameResponse.builder()
+                            .success(false)
+                            .message("인증이 필요합니다.")
+                            .build()
+            );
         }
 
-        String newNickname = request.get("nickname");
+        String newNickname = request.getNickname();
         if (newNickname == null || newNickname.trim().isEmpty()) {
-            return ResponseEntity.status(400).body(Map.of(
-                    "error", "닉네임을 입력해주세요.",
-                    "code", "INVALID_INPUT"
-            ));
+            return ResponseEntity.status(400).body(
+                    UpdateNicknameResponse.builder()
+                            .success(false)
+                            .message("닉네임을 입력해주세요.")
+                            .build()
+            );
         }
 
         try {
             Member updatedMember = memberService.updateNickname(memberId, newNickname.trim());
 
-            return ResponseEntity.ok(Map.of(
-                    "success", true,
-                    "data", Map.of(
-                            "id", updatedMember.getId(),
-                            "nickname", updatedMember.getNickname()
-                    ),
-                    "message", "닉네임이 성공적으로 변경되었습니다."
-            ));
+            UpdateNicknameResponse.MemberData memberData = UpdateNicknameResponse.MemberData.builder()
+                    .id(updatedMember.getId())
+                    .nickname(updatedMember.getNickname())
+                    .changeCount(updatedMember.getNicknameChangeCount())
+                    .lastChangeAt(updatedMember.getLastNicknameChangeAt())
+                    .build();
 
+            return ResponseEntity.ok(
+                    UpdateNicknameResponse.builder()
+                            .success(true)
+                            .data(memberData)
+                            .message("닉네임이 성공적으로 변경되었습니다.")
+                            .build()
+            );
+
+        } catch (NicknameChangeException e) {
+            return ResponseEntity.status(429).body(
+                    UpdateNicknameResponse.builder()
+                            .success(false)
+                            .message(e.getMessage())
+                            .build()
+            );
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(400).body(Map.of(
-                    "error", e.getMessage(),
-                    "code", "INVALID_NICKNAME"
-            ));
+            return ResponseEntity.status(400).body(
+                    UpdateNicknameResponse.builder()
+                            .success(false)
+                            .message(e.getMessage())
+                            .build()
+            );
         } catch (IllegalStateException e) {
-            return ResponseEntity.status(409).body(Map.of(
-                    "error", e.getMessage(),
-                    "code", "NICKNAME_DUPLICATE"
-            ));
+            return ResponseEntity.status(409).body(
+                    UpdateNicknameResponse.builder()
+                            .success(false)
+                            .message(e.getMessage())
+                            .build()
+            );
         }
     }
 }
