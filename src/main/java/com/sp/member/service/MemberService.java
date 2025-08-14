@@ -3,6 +3,7 @@ package com.sp.member.service;
 import com.sp.member.persistent.entity.Member;
 import com.sp.member.model.type.AuthType;
 import com.sp.member.persistent.repository.MemberRepository;
+import com.sp.member.util.BadWordFilter;
 import com.sp.member.util.NicknameGenerator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -14,6 +15,7 @@ import java.util.Optional;
 public class MemberService {
 
     private final MemberRepository memberRepository;
+    private final BadWordFilter badWordFilter;
 
     // 이메일 필수값으로 들어온다는 전제하에 가입여부 판단
     public Member saveIfNotExists(String email, String userId, AuthType type) {
@@ -55,5 +57,24 @@ public class MemberService {
             member.setIsDeleted(true);
             memberRepository.save(member);
         });
+    }
+
+
+    // 닉네임 업데이트 메서드 추가
+    public Member updateNickname(Long memberId, String newNickname) {
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+        if (newNickname.length() < 2 || newNickname.length() > 10) {
+            throw new IllegalArgumentException("닉네임은 2자 이상 10자 이하로 입력해주세요.");
+        }
+        if (badWordFilter.containsBadWord(newNickname)) {
+            throw new IllegalArgumentException("부적절한 단어가 포함된 닉네임입니다.");
+        }
+        if (memberRepository.existsByNicknameAndIdNot(newNickname, memberId)) {
+            throw new IllegalStateException("이미 사용 중인 닉네임입니다.");
+        }
+
+        member.setNickname(newNickname);
+        return memberRepository.save(member);
     }
 }

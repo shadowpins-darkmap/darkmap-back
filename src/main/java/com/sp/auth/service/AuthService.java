@@ -7,11 +7,12 @@ import com.sp.auth.model.vo.KakaoUserInfo;
 import com.sp.member.model.type.AuthType;
 import com.sp.member.persistent.entity.Member;
 import com.sp.member.service.MemberService;
+import com.sp.token.service.RefreshTokenService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.util.Optional;
+import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
@@ -29,16 +30,18 @@ public class AuthService {
     private final KakaoOAuthClient kakaoOAuthClient;
     private final MemberService memberService;
     private final JwtTokenProvider jwtTokenProvider;
+    private final RefreshTokenService refreshTokenService;
 
     /**
      * 카카오 로그인 URL redirect
      * @return 카카오 로그인 URL
      */
     public String getKakaoAuthorizeUrl() {
-        return "https://kauth.kakao.com/oauth/authorize"
+        String url = "https://kauth.kakao.com/oauth/authorize"
                 + "?client_id=" + clientId
                 + "&redirect_uri=" + redirectUri
                 + "&response_type=code";
+        return url;
     }
 
     public AuthResponse loginWithKakao(String code) {
@@ -51,10 +54,20 @@ public class AuthService {
                 AuthType.KAKAO
         );
 
-        String jwt = jwtTokenProvider.createToken(member.getId(), member.getLevel()); // 백오피스 개발 전까지 임시 level을 role로 사용
+        // Access Token과 Refresh Token 생성
+        String jwt = jwtTokenProvider.createAccessToken(member.getId(), member.getLevel());
+        String refreshToken = jwtTokenProvider.createRefreshToken(member.getId());
+
+        // Refresh Token을 DB에 저장
+        refreshTokenService.save(
+                member.getId(),
+                refreshToken,
+                LocalDateTime.now().plusDays(7)
+        );
 
         return AuthResponse.builder()
                 .jwtToken(jwt)
+                .refreshToken(refreshToken)
                 .build();
     }
 
