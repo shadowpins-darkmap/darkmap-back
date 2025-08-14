@@ -109,15 +109,10 @@ public class BoardReportEntity {
      * 신고 분류 Enum
      */
     public enum ReportType {
-        SPAM("스팸"),
-        INAPPROPRIATE("부적절한 내용"),
         HARASSMENT("괴롭힘"),
-        COPYRIGHT("저작권 침해"),
-        FRAUD("사기"),
-        HATE_SPEECH("혐오 표현"),
-        VIOLENCE("폭력적 내용"),
-        ADULT_CONTENT("성인 콘텐츠"),
-        FAKE_NEWS("허위 정보"),
+        OFF_TOPIC("오사용"),
+        INAPPROPRIATE("유해콘텐츠"),
+        CRIME("범죄"),
         OTHER("기타");
 
         private final String description;
