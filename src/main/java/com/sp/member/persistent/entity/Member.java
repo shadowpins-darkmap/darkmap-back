@@ -39,13 +39,10 @@ public class Member {
     @CreationTimestamp
     private LocalDateTime joinedAt;
 
+    @Builder.Default
     @Column(nullable = false, columnDefinition = "TINYINT(1)")
-    private Boolean isDeleted;
+    private Boolean isDeleted = false;
 
-    public static MemberBuilder builder() {
-        return new MemberBuilder()
-                .isDeleted(false);
-    }
     public void increaseLoginVisitCount() {
         this.loginCount++;
         this.visitCount++;
