@@ -77,4 +77,8 @@ public class MemberService {
         member.setNickname(newNickname);
         return memberRepository.save(member);
     }
+
+    public long getTotalMemberCount() {
+        return memberRepository.count(); // 탈퇴한 회원도 카운트 수에 포함
+    }
 }
