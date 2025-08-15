@@ -122,4 +122,30 @@ public class BoardVO {
             return description;
         }
     }
+
+    /**
+     * 제보 유형 (INCIDENTREPORT 카테고리인 경우)
+     */
+    private String reportType;
+
+    /**
+     * 제보 위치 (INCIDENTREPORT 카테고리인 경우)
+     */
+    private String reportLocation;
+
+    /**
+     * INCIDENTREPORT 카테고리인지 확인
+     */
+    public boolean isIncidentReportCategory() {
+        return "INCIDENTREPORT".equals(category);
+    }
+
+    /**
+     * 제보 정보가 완전한지 확인
+     */
+    public boolean hasCompleteReportInfo() {
+        return isIncidentReportCategory() &&
+                reportType != null && !reportType.trim().isEmpty() &&
+                reportLocation != null && !reportLocation.trim().isEmpty();
+    }
 }

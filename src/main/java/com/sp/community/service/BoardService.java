@@ -57,16 +57,24 @@ public class BoardService {
         String nickname = memberRepository.findNicknameByMemberId(createDTO.getAuthorId())
                 .orElse(createDTO.getAuthorId());
 
-        BoardEntity boardEntity = BoardEntity.builder()
+        // BoardEntity 빌더로 기본 정보 설정
+        BoardEntity.BoardEntityBuilder builder = BoardEntity.builder()
                 .title(createDTO.getTrimmedTitle())
                 .content(createDTO.getTrimmedContent())
                 .authorId(createDTO.getAuthorId())
                 .authorNickname(nickname)
                 .category(createDTO.getNormalizedCategory())
-                .isNotice(createDTO.getIsNotice())
-                .build();
+                .isNotice(createDTO.getIsNotice());
 
+        // INCIDENTREPORT 카테고리인 경우 제보 정보 추가
+        if (createDTO.isIncidentReportCategory()) {
+            builder.reportType(createDTO.getTrimmedReportType())
+                    .reportLocation(createDTO.getTrimmedReportLocation());
+        }
+
+        BoardEntity boardEntity = builder.build();
         BoardEntity savedBoard = boardRepository.save(boardEntity);
+
 
         if (createDTO.hasImage()) {
             try {
@@ -96,11 +104,23 @@ public class BoardService {
 
                 .orElseThrow(() -> new BoardNotFoundException("게시글을 찾을 수 없습니다."));
         validateEditPermission(boardEntity, updateDTO.getEditorId());
-        boardEntity.updateBoard(
-                updateDTO.getTrimmedTitle(),
-                updateDTO.getTrimmedContent(),
-                updateDTO.getNormalizedCategory()
-        );
+
+        // INCIDENTREPORT 카테고리인 경우 제보 전용 업데이트 메서드 사용
+        if (updateDTO.isIncidentReportCategory()) {
+            boardEntity.updateReportBoard(
+                    updateDTO.getTrimmedTitle(),
+                    updateDTO.getTrimmedContent(),
+                    updateDTO.getNormalizedCategory(),
+                    updateDTO.getTrimmedReportType(),
+                    updateDTO.getTrimmedReportLocation()
+            );
+        } else {
+            boardEntity.updateBoard(
+                    updateDTO.getTrimmedTitle(),
+                    updateDTO.getTrimmedContent(),
+                    updateDTO.getNormalizedCategory()
+            );
+        }
 
         if (updateDTO.getIsNotice() != null) {
             boardEntity.setIsNotice(updateDTO.getIsNotice());
@@ -350,6 +370,8 @@ public class BoardService {
                 .authorId(entity.getAuthorId())
                 .authorNickname(entity.getAuthorNickname())
                 .category(entity.getCategory())
+                .reportType(entity.getReportType())
+                .reportLocation(entity.getReportLocation())
                 .viewCount(entity.getViewCount())
                 .likeCount(entity.getLikeCount())
                 .commentCount(entity.getCommentCount())
@@ -376,6 +398,8 @@ public class BoardService {
                 .authorId(entity.getAuthorId())
                 .authorNickname(entity.getAuthorNickname())
                 .category(entity.getCategory())
+                .reportType(entity.getReportType())
+                .reportLocation(entity.getReportLocation())
                 .viewCount(entity.getViewCount())
                 .likeCount(entity.getLikeCount())
                 .commentCount(entity.getCommentCount())

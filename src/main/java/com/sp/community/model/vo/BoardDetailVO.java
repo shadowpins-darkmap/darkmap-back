@@ -363,6 +363,7 @@ public class BoardDetailVO {
         return authorId != null && authorId.equals(userId);
     }
 
+
     // ============ 통계 관련 메서드 ============
 
     /**
@@ -407,20 +408,28 @@ public class BoardDetailVO {
     }
 
     /**
-     * 카테고리 표시명 반환
+     * 제보 유형 (INCIDENTREPORT 카테고리인 경우)
      */
+    private String reportType;
+
+    /**
+     * 제보 위치 (INCIDENTREPORT 카테고리인 경우)
+     */
+    private String reportLocation;
+
+    // 카테고리 표시명 반환
     public String getDisplayCategory() {
         if (category == null || category.trim().isEmpty()) {
             return "일반";
         }
 
-        // 카테고리 이름 매핑 (필요시 외부 설정으로 분리)
         return switch (category.toLowerCase()) {
             case "notice" -> "공지사항";
-            case "qna" -> "질문답변";
-            case "tech" -> "기술";
-            case "free" -> "자유";
-            case "review" -> "리뷰";
+            case "memory" -> "기억";
+            case "worry" -> "고민";
+            case "ask" -> "질문";
+            case "incidentreport" -> "사건제보";  // 추가
+            case "etc" -> "미분류";
             default -> category;
         };
     }
