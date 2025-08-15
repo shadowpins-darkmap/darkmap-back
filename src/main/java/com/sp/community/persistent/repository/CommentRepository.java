@@ -18,6 +18,37 @@ import java.util.Optional;
  */
 @Repository
 public interface CommentRepository extends JpaRepository<CommentEntity, Long> {
+    /**
+     * 특정 사용자의 게시글에 달린 새 댓글 수 조회 (특정 시간 이후)
+     */
+    @Query("""
+        SELECT COUNT(c) 
+        FROM CommentEntity c 
+        JOIN c.board b 
+        WHERE b.authorId = :authorId 
+        AND c.createdAt >= :since 
+        AND c.isDeleted = false 
+        AND b.isDeleted = false
+        """)
+    Long countNewCommentsOnUserBoards(@Param("authorId") String authorId,
+                                      @Param("since") LocalDateTime since);
+
+    /**
+     * 특정 사용자의 게시글에 달린 새 댓글 목록 조회 (특정 시간 이후)
+     */
+    @Query("""
+        SELECT c 
+        FROM CommentEntity c 
+        JOIN FETCH c.board b 
+        WHERE b.authorId = :authorId 
+        AND c.createdAt >= :since 
+        AND c.isDeleted = false 
+        AND b.isDeleted = false 
+        ORDER BY c.createdAt DESC
+        """)
+    Page<CommentEntity> findNewCommentsOnUserBoards(@Param("authorId") String authorId,
+                                                    @Param("since") LocalDateTime since,
+                                                    Pageable pageable);
 
     /**
      * 특정 게시글의 댓글 목록 조회

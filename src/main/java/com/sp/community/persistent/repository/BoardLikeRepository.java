@@ -1,6 +1,7 @@
 package com.sp.community.persistent.repository;
 
 import com.sp.community.persistent.entity.BoardLikeEntity;
+import com.sp.community.persistent.entity.CommentEntity;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -18,6 +19,37 @@ import java.util.Optional;
  */
 @Repository
 public interface BoardLikeRepository extends JpaRepository<BoardLikeEntity, Long> {
+    /**
+     * 특정 사용자의 게시글에 달린 새 좋아요 수 조회 (특정 시간 이후)
+     */
+    @Query("""
+        SELECT COUNT(bl) 
+        FROM BoardLikeEntity bl 
+        JOIN bl.board b 
+        WHERE b.authorId = :authorId 
+        AND bl.createdAt >= :since 
+        AND bl.isDeleted = false 
+        AND b.isDeleted = false
+        """)
+    Long countNewLikesOnUserBoards(@Param("authorId") String authorId,
+                                   @Param("since") LocalDateTime since);
+
+    /**
+     * 특정 사용자의 게시글에 달린 새 좋아요 목록 조회 (특정 시간 이후)
+     */
+    @Query("""
+        SELECT bl 
+        FROM BoardLikeEntity bl 
+        JOIN FETCH bl.board b 
+        WHERE b.authorId = :authorId 
+        AND bl.createdAt >= :since 
+        AND bl.isDeleted = false 
+        AND b.isDeleted = false 
+        ORDER BY bl.createdAt DESC
+        """)
+    Page<BoardLikeEntity> findNewLikesOnUserBoards(@Param("authorId") String authorId,
+                                                   @Param("since") LocalDateTime since,
+                                                   Pageable pageable);
 
     /**
      * 특정 게시글의 특정 사용자 좋아요 조회 (활성 상태)
