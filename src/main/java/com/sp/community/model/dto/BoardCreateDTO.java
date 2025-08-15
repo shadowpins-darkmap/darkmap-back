@@ -85,6 +85,18 @@ public class BoardCreateDTO {
     @Builder.Default
     private Boolean allowComments = true;
 
+    /**
+     * 제보 유형 (INCIDENTREPORT 카테고리일 때만 사용)
+     */
+    @Size(max = 50, message = "제보 유형은 50자 이하로 입력해주세요.")
+    private String reportType;
+
+    /**
+     * 제보 위치 (INCIDENTREPORT 카테고리일 때만 사용)
+     */
+    @Size(max = 50, message = "제보 위치는 50자 이하로 입력해주세요.")
+    private String reportLocation;
+
     // ============ 이미지 파일 관련 메서드 ============
 
     /**
@@ -213,6 +225,18 @@ public class BoardCreateDTO {
         return filename.substring(filename.lastIndexOf(".") + 1);
     }
 
+    public String getTrimmedReportType() {
+        return reportType != null ? reportType.trim() : null;
+    }
+
+    public String getTrimmedReportLocation() {
+        return reportLocation != null ? reportLocation.trim() : null;
+    }
+
+    public boolean isIncidentReportCategory() {
+        return "INCIDENTREPORT".equals(getNormalizedCategory());
+    }
+
     // ============ 검증 메서드 ============
 
     /**
@@ -238,6 +262,21 @@ public class BoardCreateDTO {
                 if (tag != null && tag.trim().length() > 20) {
                     throw new IllegalArgumentException("각 태그는 20자 이하로 입력해주세요.");
                 }
+            }
+        }
+
+        if (isIncidentReportCategory()) {
+            if (reportType == null || reportType.trim().isEmpty()) {
+                throw new IllegalArgumentException("제보 유형은 필수입니다.");
+            }
+            if (reportLocation == null || reportLocation.trim().isEmpty()) {
+                throw new IllegalArgumentException("제보 위치는 필수입니다.");
+            }
+            if (reportType.length() > 50) {
+                throw new IllegalArgumentException("제보 유형은 50자 이하로 입력해주세요.");
+            }
+            if (reportLocation.length() > 50) {
+                throw new IllegalArgumentException("제보 위치는 50자 이하로 입력해주세요.");
             }
         }
 

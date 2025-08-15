@@ -39,7 +39,15 @@ public class BoardEntity {
     //기억 MEMORY
     //고민 WORRY
     //질문 ASK
+    //사건제보 INCIDENTREPORT
     //미분류 ETC
+
+    // INCIDENTREPORT 카테고리 전용 필드들
+    @Column(name = "report_type", length = 50)
+    private String reportType; // 제보 유형 (INCIDENTREPORT 카테고리일 때만 사용)
+
+    @Column(name = "report_location", length = 50)
+    private String reportLocation; // 제보 위치 (INCIDENTREPORT 카테고리일 때만 사용)
 
     @Builder.Default
     @Column(name = "view_count", nullable = false, columnDefinition = "int default 0")
@@ -91,6 +99,14 @@ public class BoardEntity {
     @OneToMany(mappedBy = "board", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<CommentEntity> comments = new ArrayList<>();
 
+    // 상수 정의 (카테고리)
+    public static final String CATEGORY_NOTICE = "NOTICE";
+    public static final String CATEGORY_MEMORY = "MEMORY";
+    public static final String CATEGORY_WORRY = "WORRY";
+    public static final String CATEGORY_ASK = "ASK";
+    public static final String CATEGORY_INCIDENTREPORT = "INCIDENTREPORT";
+    public static final String CATEGORY_ETC = "ETC";
+
     // JPA 콜백 메서드
     @PrePersist
     public void prePersist() {
@@ -115,11 +131,23 @@ public class BoardEntity {
         if (this.isDeleted == null) {
             this.isDeleted = false;
         }
+
+        // INCIDENTREPORT 카테고리가 아닌 경우 제보 관련 필드 null 처리
+        if (!CATEGORY_INCIDENTREPORT.equals(this.category)) {
+            this.reportType = null;
+            this.reportLocation = null;
+        }
     }
 
     @PreUpdate
     public void preUpdate() {
         this.updatedAt = LocalDateTime.now();
+
+        // INCIDENTREPORT 카테고리가 아닌 경우 제보 관련 필드 null 처리
+        if (!CATEGORY_INCIDENTREPORT.equals(this.category)) {
+            this.reportType = null;
+            this.reportLocation = null;
+        }
     }
 
     // 비즈니스 로직 메서드
@@ -164,12 +192,37 @@ public class BoardEntity {
     }
 
     /**
-     * 게시글 전체 정보 수정 (제목, 내용, 카테고리, 수정자)
+     * 게시글 전체 정보 수정 (제목, 내용, 카테고리)
      */
     public void updateBoard(String title, String content, String category) {
         this.title = title;
         this.content = content;
         this.category = category;
+        this.updatedAt = LocalDateTime.now();
+
+        // INCIDENTREPORT 카테고리가 아닌 경우 제보 관련 필드 null 처리
+        if (!CATEGORY_INCIDENTREPORT.equals(category)) {
+            this.reportType = null;
+            this.reportLocation = null;
+        }
+    }
+
+    /**
+     * 제보 게시글 전체 정보 수정 (제목, 내용, 카테고리, 제보 유형, 제보 위치)
+     */
+    public void updateReportBoard(String title, String content, String category, String reportType, String reportLocation) {
+        this.title = title;
+        this.content = content;
+        this.category = category;
+
+        if (CATEGORY_INCIDENTREPORT.equals(category)) {
+            this.reportType = reportType;
+            this.reportLocation = reportLocation;
+        } else {
+            this.reportType = null;
+            this.reportLocation = null;
+        }
+
         this.updatedAt = LocalDateTime.now();
     }
 
@@ -188,6 +241,23 @@ public class BoardEntity {
     public void updateCategory(String category) {
         this.category = category;
         this.updatedAt = LocalDateTime.now();
+
+        // INCIDENTREPORT 카테고리가 아닌 경우 제보 관련 필드 null 처리
+        if (!CATEGORY_INCIDENTREPORT.equals(category)) {
+            this.reportType = null;
+            this.reportLocation = null;
+        }
+    }
+
+    /**
+     * 제보 정보 수정 (INCIDENTREPORT 카테고리일 때만)
+     */
+    public void updateReportInfo(String reportType, String reportLocation) {
+        if (CATEGORY_INCIDENTREPORT.equals(this.category)) {
+            this.reportType = reportType;
+            this.reportLocation = reportLocation;
+            this.updatedAt = LocalDateTime.now();
+        }
     }
 
     /**
@@ -347,5 +417,21 @@ public class BoardEntity {
      */
     public boolean isAuthor(String userId) {
         return this.authorId != null && this.authorId.equals(userId);
+    }
+
+    /**
+     * 사건제보 카테고리인지 확인
+     */
+    public boolean isReportCategory() {
+        return CATEGORY_INCIDENTREPORT.equals(this.category);
+    }
+
+    /**
+     * 제보 정보가 완전한지 확인 (제보 카테고리이면서 유형과 위치가 모두 있는지)
+     */
+    public boolean hasCompleteReportInfo() {
+        return isReportCategory() &&
+                this.reportType != null && !this.reportType.trim().isEmpty() &&
+                this.reportLocation != null && !this.reportLocation.trim().isEmpty();
     }
 }

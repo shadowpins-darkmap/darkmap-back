@@ -105,6 +105,18 @@ public class BoardUpdateDTO {
      */
     private List<String> tags;
 
+    /**
+     * 제보 유형 (INCIDENTREPORT 카테고리일 때만 사용)
+     */
+    @Size(max = 50, message = "제보 유형은 50자 이하로 입력해주세요.")
+    private String reportType;
+
+    /**
+     * 제보 위치 (INCIDENTREPORT 카테고리일 때만 사용)
+     */
+    @Size(max = 50, message = "제보 위치는 50자 이하로 입력해주세요.")
+    private String reportLocation;
+
     // ============ 이미지 파일 관련 메서드 ============
 
     /**
@@ -265,6 +277,18 @@ public class BoardUpdateDTO {
             return "";
         }
         return filename.substring(filename.lastIndexOf(".") + 1);
+    }
+
+    public String getTrimmedReportType() {
+        return reportType != null ? reportType.trim() : null;
+    }
+
+    public String getTrimmedReportLocation() {
+        return reportLocation != null ? reportLocation.trim() : null;
+    }
+
+    public boolean isIncidentReportCategory() {
+        return "INCIDENTREPORT".equals(getNormalizedCategory());
     }
 
     // ============ 검증 메서드 ============
