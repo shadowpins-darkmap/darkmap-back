@@ -13,6 +13,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -31,7 +32,7 @@ import java.util.List;
 /**
  * 게시글 관련 API Controller
  */
-@Tag(name = "Board", description = "게시글 관리 API")
+@Tag(name = "Board", description = "게시글 관리 API - 게시글의 생성, 조회, 수정, 삭제 및 검색 기능을 제공합니다.")
 @Slf4j
 @RestController
 @RequestMapping("/api/v1/boards")
@@ -43,18 +44,91 @@ public class BoardController {
     /**
      * 게시글 목록 조회
      */
-    @Operation(summary = "게시글 목록 조회", description = "검색 조건에 따른 게시글 목록을 조회합니다.")
+    @Operation(
+            summary = "게시글 목록 조회",
+            description = "검색 조건과 페이징 정보에 따른 게시글 목록을 조회합니다. 제목, 내용, 작성자로 검색할 수 있습니다."
+    )
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "조회 성공"),
-            @ApiResponse(responseCode = "400", description = "잘못된 요청"),
-            @ApiResponse(responseCode = "500", description = "서버 오류",
-                    content = @Content(mediaType = "application/json",
-                            examples = {@ExampleObject()}))
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "게시글 목록 조회 성공",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    value = """
+                        {
+                            "success": true,
+                            "message": "게시글 목록 조회 성공",
+                            "data": {
+                                "boards": [
+                                    {
+                                        "boardId": 1,
+                                        "title": "첫 번째 게시글",
+                                        "content": "게시글 내용입니다.",
+                                        "authorId": "user123",
+                                        "authorNickname": "사용자123",
+                                        "viewCount": 150,
+                                        "likeCount": 25,
+                                        "commentCount": 8,
+                                        "createdAt": "2024-01-15 10:30:00",
+                                        "isAuthor": true
+                                    }
+                                ],
+                                "totalElements": 100,
+                                "totalPages": 10,
+                                "currentPage": 1,
+                                "pageSize": 10,
+                                "hasNext": true,
+                                "hasPrevious": false
+                            }
+                        }
+                        """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "잘못된 요청 - 유효하지 않은 검색 조건 또는 페이징 파라미터",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    value = """
+                        {
+                            "success": false,
+                            "message": "페이지 번호는 1 이상이어야 합니다.",
+                            "data": null
+                        }
+                        """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "500",
+                    description = "서버 내부 오류",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    value = """
+                        {
+                            "success": false,
+                            "message": "서버 내부 오류가 발생했습니다.",
+                            "data": null
+                        }
+                        """
+                            )
+                    )
+            )
     })
     @GetMapping
     public ResponseEntity<CommonApiResponse<BoardListVO>> getBoardList(
-            @Parameter(description = "검색 조건") @ModelAttribute BoardSearchDTO searchDTO,
-            @Parameter(description = "페이징 정보") @ModelAttribute PageRequestDTO pageRequestDTO) {
+            @Parameter(
+                    description = "검색 조건",
+                    example = "keyword=검색어&searchType=TITLE&category=FREE"
+            ) @ModelAttribute BoardSearchDTO searchDTO,
+            @Parameter(
+                    description = "페이징 정보",
+                    example = "page=1&size=10&sort=createdAt,desc"
+            ) @ModelAttribute PageRequestDTO pageRequestDTO) {
 
         log.info("게시글 목록 조회 요청: search={}, page={}", searchDTO, pageRequestDTO);
 
@@ -72,16 +146,86 @@ public class BoardController {
     /**
      * 게시글 상세 조회
      */
-    @Operation(summary = "게시글 상세 조회", description = "게시글 상세 정보를 조회합니다.")
+    @Operation(
+            summary = "게시글 상세 조회",
+            description = "게시글 ID로 특정 게시글의 상세 정보를 조회합니다. 조회 시 조회수가 1 증가합니다."
+    )
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "조회 성공"),
-            @ApiResponse(responseCode = "404", description = "게시글 없음"),
-            @ApiResponse(responseCode = "403", description = "접근 권한 없음")
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "게시글 상세 조회 성공",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    value = """
+                        {
+                            "success": true,
+                            "message": "게시글 조회 성공",
+                            "data": {
+                                "boardId": 1,
+                                "title": "게시글 제목",
+                                "content": "게시글 상세 내용입니다.",
+                                "authorId": "user123",
+                                "authorNickname": "사용자123",
+                                "category": "FREE",
+                                "viewCount": 151,
+                                "likeCount": 25,
+                                "commentCount": 8,
+                                "createdAt": "2024-01-15 10:30:00",
+                                "updatedAt": "2024-01-15 11:45:00",
+                                "isAuthor": true,
+                                "isLiked": false,
+                                "attachments": [
+                                    {
+                                        "fileId": 1,
+                                        "fileName": "image.jpg",
+                                        "fileSize": 1024000,
+                                        "downloadUrl": "/api/v1/files/download/1"
+                                    }
+                                ]
+                            }
+                        }
+                        """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "403",
+                    description = "접근 권한 없음 - 비공개 게시글이거나 삭제된 게시글",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    value = """
+                        {
+                            "success": false,
+                            "message": "게시글에 접근할 권한이 없습니다.",
+                            "data": null
+                        }
+                        """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "게시글 없음 - 존재하지 않는 게시글 ID",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    value = """
+                        {
+                            "success": false,
+                            "message": "게시글을 찾을 수 없습니다.",
+                            "data": null
+                        }
+                        """
+                            )
+                    )
+            )
     })
     @GetMapping("/{boardId}")
     public ResponseEntity<CommonApiResponse<BoardDetailVO>> getBoardDetail(
-            @Parameter(description = "게시글 ID") @PathVariable Long boardId,
-            @AuthenticationPrincipal UserDetails userDetails) {
+            @Parameter(description = "게시글 ID", required = true, example = "1") @PathVariable Long boardId,
+            @Parameter(hidden = true) @AuthenticationPrincipal UserDetails userDetails) {
 
         log.info("게시글 상세 조회: boardId={}", boardId);
 
@@ -100,16 +244,84 @@ public class BoardController {
     /**
      * 게시글 생성
      */
-    @Operation(summary = "게시글 생성", description = "새로운 게시글을 생성합니다.")
+    @Operation(
+            summary = "게시글 생성",
+            description = "새로운 게시글을 생성합니다. 파일 첨부도 가능합니다. 로그인된 사용자만 작성할 수 있습니다.",
+            requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "게시글 생성 정보 (multipart/form-data)",
+                    required = true,
+                    content = @Content(
+                            mediaType = "multipart/form-data",
+                            schema = @Schema(implementation = BoardCreateDTO.class)
+                    )
+            )
+    )
     @ApiResponses({
-            @ApiResponse(responseCode = "201", description = "생성 성공"),
-            @ApiResponse(responseCode = "400", description = "잘못된 요청"),
-            @ApiResponse(responseCode = "401", description = "인증 필요")
+            @ApiResponse(
+                    responseCode = "201",
+                    description = "게시글 생성 성공",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    value = """
+                        {
+                            "success": true,
+                            "message": "게시글 생성 성공",
+                            "data": {
+                                "boardId": 1,
+                                "title": "새로운 게시글",
+                                "content": "게시글 내용입니다.",
+                                "authorId": "user123",
+                                "authorNickname": "사용자123",
+                                "category": "FREE",
+                                "viewCount": 0,
+                                "likeCount": 0,
+                                "commentCount": 0,
+                                "createdAt": "2024-01-15 10:30:00",
+                                "isAuthor": true
+                            }
+                        }
+                        """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "잘못된 요청 - 필수 필드 누락 또는 유효하지 않은 데이터",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    value = """
+                        {
+                            "success": false,
+                            "message": "게시글 제목은 필수입니다.",
+                            "data": null
+                        }
+                        """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "인증 필요 - 로그인하지 않은 사용자",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    value = """
+                        {
+                            "success": false,
+                            "message": "로그인이 필요합니다.",
+                            "data": null
+                        }
+                        """
+                            )
+                    )
+            )
     })
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<CommonApiResponse<BoardVO>> createBoard(
-            @Parameter(description = "게시글 생성 정보") @Valid @ModelAttribute BoardCreateDTO createDTO,
-            @AuthenticationPrincipal Long memberId) {
+            @Parameter(description = "게시글 생성 정보", required = true) @Valid @ModelAttribute BoardCreateDTO createDTO,
+            @Parameter(hidden = true) @AuthenticationPrincipal Long memberId) {
 
         log.info("게시글 생성 요청: title={}, authorId={}", createDTO.getTitle(), createDTO.getAuthorId());
 
@@ -130,18 +342,102 @@ public class BoardController {
     /**
      * 게시글 수정
      */
-    @Operation(summary = "게시글 수정", description = "게시글을 수정합니다.")
+    @Operation(
+            summary = "게시글 수정",
+            description = "기존 게시글을 수정합니다. 게시글 작성자만 수정할 수 있습니다.",
+            requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "게시글 수정 정보 (multipart/form-data)",
+                    required = true,
+                    content = @Content(
+                            mediaType = "multipart/form-data",
+                            schema = @Schema(implementation = BoardUpdateDTO.class)
+                    )
+            )
+    )
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "수정 성공"),
-            @ApiResponse(responseCode = "400", description = "잘못된 요청"),
-            @ApiResponse(responseCode = "403", description = "수정 권한 없음"),
-            @ApiResponse(responseCode = "404", description = "게시글 없음")
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "게시글 수정 성공",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    value = """
+                        {
+                            "success": true,
+                            "message": "게시글 수정 성공",
+                            "data": {
+                                "boardId": 1,
+                                "title": "수정된 게시글 제목",
+                                "content": "수정된 게시글 내용입니다.",
+                                "authorId": "user123",
+                                "authorNickname": "사용자123",
+                                "category": "FREE",
+                                "viewCount": 150,
+                                "likeCount": 25,
+                                "commentCount": 8,
+                                "createdAt": "2024-01-15 10:30:00",
+                                "updatedAt": "2024-01-15 12:00:00",
+                                "isAuthor": true
+                            }
+                        }
+                        """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "잘못된 요청 - 유효하지 않은 수정 데이터",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    value = """
+                        {
+                            "success": false,
+                            "message": "게시글 제목은 100자 이하로 입력해주세요.",
+                            "data": null
+                        }
+                        """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "403",
+                    description = "수정 권한 없음 - 게시글 작성자가 아님",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    value = """
+                        {
+                            "success": false,
+                            "message": "게시글 수정 권한이 없습니다.",
+                            "data": null
+                        }
+                        """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "게시글 없음 - 존재하지 않거나 삭제된 게시글",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    value = """
+                        {
+                            "success": false,
+                            "message": "게시글을 찾을 수 없습니다.",
+                            "data": null
+                        }
+                        """
+                            )
+                    )
+            )
     })
     @PutMapping(value = "/{boardId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<CommonApiResponse<BoardVO>> updateBoard(
-            @Parameter(description = "게시글 ID") @PathVariable Long boardId,
-            @Parameter(description = "게시글 수정 정보") @Valid @ModelAttribute BoardUpdateDTO updateDTO,
-            @AuthenticationPrincipal Long memberId) {
+            @Parameter(description = "게시글 ID", required = true, example = "1") @PathVariable Long boardId,
+            @Parameter(description = "게시글 수정 정보", required = true) @Valid @ModelAttribute BoardUpdateDTO updateDTO,
+            @Parameter(hidden = true) @AuthenticationPrincipal Long memberId) {
 
         log.info("게시글 수정 요청: boardId={}", boardId);
 
@@ -165,16 +461,61 @@ public class BoardController {
     /**
      * 게시글 삭제
      */
-    @Operation(summary = "게시글 삭제", description = "게시글을 삭제합니다.")
+    @Operation(
+            summary = "게시글 삭제",
+            description = "게시글을 삭제합니다. 게시글 작성자만 삭제할 수 있으며, 소프트 삭제로 처리됩니다."
+    )
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "삭제 성공"),
-            @ApiResponse(responseCode = "403", description = "삭제 권한 없음"),
-            @ApiResponse(responseCode = "404", description = "게시글 없음")
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "게시글 삭제 성공",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    value = """
+                        {
+                            "success": true,
+                            "message": "게시글 삭제 성공"
+                        }
+                        """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "403",
+                    description = "삭제 권한 없음 - 게시글 작성자가 아님",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    value = """
+                        {
+                            "success": false,
+                            "message": "게시글 삭제 권한이 없습니다."
+                        }
+                        """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "게시글 없음 - 존재하지 않거나 이미 삭제된 게시글",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    value = """
+                        {
+                            "success": false,
+                            "message": "게시글을 찾을 수 없습니다."
+                        }
+                        """
+                            )
+                    )
+            )
     })
     @DeleteMapping("/{boardId}")
     public ResponseEntity<CommonApiResponse<Void>> deleteBoard(
-            @Parameter(description = "게시글 ID") @PathVariable Long boardId,
-            @AuthenticationPrincipal Long memberId) {
+            @Parameter(description = "게시글 ID", required = true, example = "1") @PathVariable Long boardId,
+            @Parameter(hidden = true) @AuthenticationPrincipal Long memberId) {
 
         log.info("게시글 삭제 요청: boardId={}", boardId);
 
@@ -191,13 +532,56 @@ public class BoardController {
     /**
      * 인기 게시글 조회
      */
-    @Operation(summary = "인기 게시글 조회", description = "인기 게시글 목록을 조회합니다.")
+    @Operation(
+            summary = "인기 게시글 조회",
+            description = "좋아요 수나 조회수를 기준으로 인기 게시글 목록을 조회합니다."
+    )
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "조회 성공")
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "인기 게시글 조회 성공",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    value = """
+                        {
+                            "success": true,
+                            "message": "인기 게시글 조회 성공",
+                            "data": [
+                                {
+                                    "boardId": 1,
+                                    "title": "가장 인기 있는 게시글",
+                                    "content": "많은 사람들이 좋아하는 게시글입니다.",
+                                    "authorId": "user123",
+                                    "authorNickname": "사용자123",
+                                    "viewCount": 2500,
+                                    "likeCount": 150,
+                                    "commentCount": 45,
+                                    "createdAt": "2024-01-10 09:00:00",
+                                    "isAuthor": false
+                                },
+                                {
+                                    "boardId": 2,
+                                    "title": "두 번째 인기 게시글",
+                                    "content": "역시 인기가 많은 게시글입니다.",
+                                    "authorId": "user456",
+                                    "authorNickname": "사용자456",
+                                    "viewCount": 2200,
+                                    "likeCount": 120,
+                                    "commentCount": 38,
+                                    "createdAt": "2024-01-12 14:30:00",
+                                    "isAuthor": false
+                                }
+                            ]
+                        }
+                        """
+                            )
+                    )
+            )
     })
     @GetMapping("/popular")
     public ResponseEntity<CommonApiResponse<List<BoardVO>>> getPopularBoards(
-            @Parameter(description = "조회할 게시글 수") @RequestParam(defaultValue = "10") int limit) {
+            @Parameter(description = "조회할 게시글 수", example = "10") @RequestParam(defaultValue = "10") int limit) {
 
         log.info("인기 게시글 조회: limit={}", limit);
 
@@ -215,13 +599,56 @@ public class BoardController {
     /**
      * 최근 게시글 조회
      */
-    @Operation(summary = "최근 게시글 조회", description = "최근 게시글 목록을 조회합니다.")
+    @Operation(
+            summary = "최근 게시글 조회",
+            description = "가장 최근에 작성된 게시글 목록을 조회합니다."
+    )
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "조회 성공")
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "최근 게시글 조회 성공",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    value = """
+                        {
+                            "success": true,
+                            "message": "최근 게시글 조회 성공",
+                            "data": [
+                                {
+                                    "boardId": 10,
+                                    "title": "방금 작성한 게시글",
+                                    "content": "최신 게시글입니다.",
+                                    "authorId": "user789",
+                                    "authorNickname": "사용자789",
+                                    "viewCount": 5,
+                                    "likeCount": 0,
+                                    "commentCount": 0,
+                                    "createdAt": "2024-01-15 15:30:00",
+                                    "isAuthor": false
+                                },
+                                {
+                                    "boardId": 9,
+                                    "title": "어제 작성한 게시글",
+                                    "content": "어제 올린 게시글입니다.",
+                                    "authorId": "user456",
+                                    "authorNickname": "사용자456",
+                                    "viewCount": 25,
+                                    "likeCount": 3,
+                                    "commentCount": 2,
+                                    "createdAt": "2024-01-14 20:15:00",
+                                    "isAuthor": false
+                                }
+                            ]
+                        }
+                        """
+                            )
+                    )
+            )
     })
     @GetMapping("/recent")
     public ResponseEntity<CommonApiResponse<List<BoardVO>>> getRecentBoards(
-            @Parameter(description = "조회할 게시글 수") @RequestParam(defaultValue = "10") int limit) {
+            @Parameter(description = "조회할 게시글 수", example = "10") @RequestParam(defaultValue = "10") int limit) {
 
         log.info("최근 게시글 조회: limit={}", limit);
 
@@ -239,15 +666,69 @@ public class BoardController {
     /**
      * 내가 작성한 게시글 조회
      */
-    @Operation(summary = "내 게시글 조회", description = "현재 사용자가 작성한 게시글을 조회합니다.")
+    @Operation(
+            summary = "내 게시글 조회",
+            description = "현재 로그인한 사용자가 작성한 게시글 목록을 조회합니다."
+    )
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "조회 성공"),
-            @ApiResponse(responseCode = "401", description = "인증 필요")
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "내 게시글 조회 성공",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    value = """
+                        {
+                            "success": true,
+                            "message": "내 게시글 조회 성공",
+                            "data": {
+                                "boards": [
+                                    {
+                                        "boardId": 1,
+                                        "title": "내가 작성한 첫 번째 게시글",
+                                        "content": "내가 쓴 게시글입니다.",
+                                        "authorId": "user123",
+                                        "authorNickname": "사용자123",
+                                        "viewCount": 150,
+                                        "likeCount": 25,
+                                        "commentCount": 8,
+                                        "createdAt": "2024-01-15 10:30:00",
+                                        "isAuthor": true
+                                    }
+                                ],
+                                "totalElements": 15,
+                                "totalPages": 2,
+                                "currentPage": 1,
+                                "pageSize": 10,
+                                "hasNext": true,
+                                "hasPrevious": false
+                            }
+                        }
+                        """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "인증 필요 - 로그인하지 않은 사용자",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    value = """
+                        {
+                            "success": false,
+                            "message": "로그인이 필요합니다",
+                            "data": null
+                        }
+                        """
+                            )
+                    )
+            )
     })
     @GetMapping("/my")
     public ResponseEntity<CommonApiResponse<BoardListVO>> getMyBoards(
             @Parameter(description = "페이징 정보") @ModelAttribute PageRequestDTO pageRequestDTO,
-            @AuthenticationPrincipal Long memberId) {
+            @Parameter(hidden = true) @AuthenticationPrincipal Long memberId) {
 
         log.info("내 게시글 조회: userId={}", memberId);
 
