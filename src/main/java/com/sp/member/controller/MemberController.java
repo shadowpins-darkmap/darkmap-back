@@ -254,4 +254,24 @@ public class MemberController {
             );
         }
     }
+
+    @Operation(
+            summary = "전체 회원 수 조회",
+            description = "현재까지 가입한 전체 회원 수를 조회합니다."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "회원 수 조회 성공")
+    })
+    @GetMapping("/count")
+    public ResponseEntity<?> getMemberCount() {
+
+        long totalCount = memberService.getTotalMemberCount();
+
+        return ResponseEntity.ok(Map.of(
+                "success", true,
+                "count", totalCount,
+                "message", "회원 수 조회 성공"
+        ));
+    }
+
 }
