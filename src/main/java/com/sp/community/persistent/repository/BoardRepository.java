@@ -20,6 +20,18 @@ import java.util.Optional;
 public interface BoardRepository extends JpaRepository<BoardEntity, Long> {
 
     /**
+     * 삭제되지 않은 전체 게시글 수 조회
+     */
+    @Query("SELECT COUNT(b) FROM BoardEntity b WHERE b.isDeleted = false")
+    Long countAllNotDeleted();
+
+    /**
+     * 특정 카테고리의 삭제되지 않은 게시글 수 조회
+     */
+    @Query("SELECT COUNT(b) FROM BoardEntity b WHERE b.category = :category AND b.isDeleted = false")
+    Long countByCategoryAndNotDeleted(@Param("category") String category);
+
+    /**
      * 삭제되지 않은 게시글 조회 (ID로)
      */
     @Query("SELECT b FROM BoardEntity b WHERE b.boardId = :boardId AND b.isDeleted = false")
