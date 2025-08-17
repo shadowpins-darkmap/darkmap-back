@@ -50,6 +50,13 @@ public class BoardEntity {
     private String reportLocation; // 제보 위치 (INCIDENTREPORT 카테고리일 때만 사용)
 
     @Builder.Default
+    @Column(name = "report_approved", nullable = false, columnDefinition = "boolean default false")
+    private Boolean reportApproved = false; // 제보 승인 여부 (INCIDENTREPORT 카테고리일 때만 사용)
+
+    @Column(name = "report_approved_at")
+    private LocalDateTime reportApprovedAt; // 제보 승인 시간 (INCIDENTREPORT 카테고리일 때만 사용)
+
+    @Builder.Default
     @Column(name = "view_count", nullable = false, columnDefinition = "int default 0")
     private Integer viewCount = 0;
 
@@ -131,11 +138,16 @@ public class BoardEntity {
         if (this.isDeleted == null) {
             this.isDeleted = false;
         }
+        if (this.reportApproved == null) {
+            this.reportApproved = false;
+        }
 
         // INCIDENTREPORT 카테고리가 아닌 경우 제보 관련 필드 null 처리
         if (!CATEGORY_INCIDENTREPORT.equals(this.category)) {
             this.reportType = null;
             this.reportLocation = null;
+            this.reportApproved = false;
+            this.reportApprovedAt = null;
         }
     }
 
@@ -147,6 +159,8 @@ public class BoardEntity {
         if (!CATEGORY_INCIDENTREPORT.equals(this.category)) {
             this.reportType = null;
             this.reportLocation = null;
+            this.reportApproved = false;
+            this.reportApprovedAt = null;
         }
     }
 
@@ -204,6 +218,8 @@ public class BoardEntity {
         if (!CATEGORY_INCIDENTREPORT.equals(category)) {
             this.reportType = null;
             this.reportLocation = null;
+            this.reportApproved = false;
+            this.reportApprovedAt = null;
         }
     }
 
@@ -221,6 +237,8 @@ public class BoardEntity {
         } else {
             this.reportType = null;
             this.reportLocation = null;
+            this.reportApproved = false;
+            this.reportApprovedAt = null;
         }
 
         this.updatedAt = LocalDateTime.now();
@@ -246,6 +264,8 @@ public class BoardEntity {
         if (!CATEGORY_INCIDENTREPORT.equals(category)) {
             this.reportType = null;
             this.reportLocation = null;
+            this.reportApproved = false;
+            this.reportApprovedAt = null;
         }
     }
 
@@ -256,6 +276,28 @@ public class BoardEntity {
         if (CATEGORY_INCIDENTREPORT.equals(this.category)) {
             this.reportType = reportType;
             this.reportLocation = reportLocation;
+            this.updatedAt = LocalDateTime.now();
+        }
+    }
+
+    /**
+     * 제보 승인 (INCIDENTREPORT 카테고리일 때만)
+     */
+    public void approveReport(String approvedBy) {
+        if (CATEGORY_INCIDENTREPORT.equals(this.category)) {
+            this.reportApproved = true;
+            this.reportApprovedAt = LocalDateTime.now();
+            this.updatedAt = LocalDateTime.now();
+        }
+    }
+
+    /**
+     * 제보 승인 취소 (INCIDENTREPORT 카테고리일 때만)
+     */
+    public void disapproveReport() {
+        if (CATEGORY_INCIDENTREPORT.equals(this.category)) {
+            this.reportApproved = false;
+            this.reportApprovedAt = null;
             this.updatedAt = LocalDateTime.now();
         }
     }
@@ -413,6 +455,13 @@ public class BoardEntity {
     }
 
     /**
+     * 제보가 승인되었는지 확인
+     */
+    public boolean isReportApproved() {
+        return this.reportApproved != null && this.reportApproved;
+    }
+
+    /**
      * 특정 사용자가 작성한 게시글인지 확인
      */
     public boolean isAuthor(String userId) {
@@ -433,5 +482,19 @@ public class BoardEntity {
         return isReportCategory() &&
                 this.reportType != null && !this.reportType.trim().isEmpty() &&
                 this.reportLocation != null && !this.reportLocation.trim().isEmpty();
+    }
+
+    /**
+     * 제보가 승인 대기 상태인지 확인 (제보 카테고리이면서 아직 승인되지 않음)
+     */
+    public boolean isPendingApproval() {
+        return isReportCategory() && !isReportApproved();
+    }
+
+    /**
+     * 제보 승인 정보가 완전한지 확인 (승인되었고 승인시간이 있는지)
+     */
+    public boolean hasCompleteApprovalInfo() {
+        return isReportApproved() && this.reportApprovedAt != null;
     }
 }

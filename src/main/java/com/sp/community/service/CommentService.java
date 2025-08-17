@@ -307,6 +307,14 @@ public class CommentService {
     }
 
     /**
+     * 특정 사용자의 댓글 수 조회
+     */
+    public Long getMemberCommentCount(Long memberId) {
+        return commentRepository.countByAuthorIdAndNotDeleted(memberId+"");
+    }
+
+
+    /**
      * 댓글 존재 여부 확인
      */
     public boolean existsComment(Long commentId) {
