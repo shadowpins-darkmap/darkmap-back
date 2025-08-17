@@ -7,4 +7,6 @@ import lombok.Setter;
 @Setter
 public class WithdrawRequest {
     private String kakaoAccessToken;
+    private String googleAccessToken;
+    private String googleRefreshToken;
 }

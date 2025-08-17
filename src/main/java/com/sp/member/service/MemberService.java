@@ -58,11 +58,28 @@ public class MemberService {
         return memberRepository.findById(id).orElse(null);
     }
 
+    @Transactional
     public void withdraw(Long id) {
-        memberRepository.findById(id).ifPresent(member -> {
+        log.info("회원 탈퇴 처리 시작 - 사용자 ID: {}", id);
+
+        Optional<Member> memberOpt = memberRepository.findById(id);
+        if (memberOpt.isPresent()) {
+            Member member = memberOpt.get();
+
+            if (member.getIsDeleted()) {
+                log.warn("이미 탈퇴한 회원 - 사용자 ID: {}", id);
+                throw new IllegalStateException("이미 탈퇴한 회원입니다.");
+            }
+
+            // 탈퇴 처리
             member.setIsDeleted(true);
             memberRepository.save(member);
-        });
+
+            log.info("회원 탈퇴 처리 완료 - 사용자 ID: {}, 이메일: {}", id, member.getEmail());
+        } else {
+            log.error("탈퇴 처리 실패: 존재하지 않는 회원 - 사용자 ID: {}", id);
+            throw new IllegalArgumentException("존재하지 않는 회원입니다.");
+        }
     }
 
     /**

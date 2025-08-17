@@ -5,12 +5,16 @@ import com.sp.auth.model.vo.AuthResponse;
 import com.sp.auth.model.vo.WithdrawRequest;
 import com.sp.auth.service.AuthService;
 import com.sp.member.service.MemberService;
+import com.sp.member.persistent.entity.Member;
+import com.sp.member.model.type.AuthType;
 import com.sp.token.service.RefreshTokenService;
+import com.sp.token.service.TokenBlacklistService;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
@@ -23,6 +27,7 @@ import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.Map;
 
+@Slf4j
 @RequiredArgsConstructor
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -32,6 +37,7 @@ public class AuthController {
     private final MemberService memberService;
     private final RefreshTokenService refreshTokenService;
     private final JwtTokenProvider jwtTokenProvider;
+    private final TokenBlacklistService tokenBlacklistService;
 
     @GetMapping("/login/kakao")
     public void redirectToKakao(HttpServletResponse response) throws IOException {
@@ -46,27 +52,119 @@ public class AuthController {
     }
 
     @DeleteMapping("/withdraw/kakao")
-    public ResponseEntity<?> withdraw(@AuthenticationPrincipal Long id,
-                                      @RequestBody WithdrawRequest request,
-                                      HttpServletResponse response) {
-        memberService.withdraw(id);
-        // Refresh Token 삭제
-        refreshTokenService.deleteByMemberId(id);
-        // 쿠키 삭제
-        clearTokenCookies(response);
+    public ResponseEntity<?> withdrawKakao(@AuthenticationPrincipal Long id,
+                                           @RequestBody WithdrawRequest request,
+                                           HttpServletResponse response) {
+        try {
+            // 사용자 정보 조회 및 검증
+            Member member = memberService.findById(id);
+            if (member == null) {
+                return ResponseEntity.status(404).body(Map.of("error", "사용자를 찾을 수 없습니다."));
+            }
 
-        return ResponseEntity.ok().build();
+            // 카카오 사용자인지 확인
+            if (member.getType() != AuthType.KAKAO) {
+                return ResponseEntity.status(400).body(Map.of("error", "카카오 사용자가 아닙니다."));
+            }
+
+            // 카카오 연동 해제 (액세스 토큰이 있는 경우)
+            if (request.getKakaoAccessToken() != null && !request.getKakaoAccessToken().isEmpty()) {
+                authService.disconnectKakao(request.getKakaoAccessToken());
+            }
+
+            // 회원 탈퇴 처리
+            memberService.withdraw(id);
+
+            // Refresh Token 삭제
+            refreshTokenService.deleteByMemberId(id);
+
+            // 쿠키 삭제
+            clearTokenCookies(response);
+
+            return ResponseEntity.ok().body(Map.of("message", "카카오 탈퇴가 완료되었습니다."));
+
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of("error", "탈퇴 처리 중 오류가 발생했습니다."));
+        }
+    }
+
+    @DeleteMapping("/withdraw/google")
+    public ResponseEntity<?> withdrawGoogle(@AuthenticationPrincipal Long id,
+                                            HttpServletRequest httpRequest,
+                                            HttpServletResponse response) {
+        try {
+            // 사용자 정보 조회 및 검증
+            Member member = memberService.findById(id);
+            if (member == null || member.getIsDeleted()) {
+                return ResponseEntity.status(404).body(Map.of("error", "사용자를 찾을 수 없습니다."));
+            }
+
+            // 구글 사용자인지 확인
+            if (member.getType() != AuthType.GOOGLE) {
+                return ResponseEntity.status(400).body(Map.of("error", "구글 사용자가 아닙니다."));
+            }
+
+            // 🔗 구글 연동 해제 (DB에서 토큰 자동 조회)
+            authService.disconnectGoogle(id);
+
+            // 현재 사용 중인 JWT 토큰을 블랙리스트에 추가
+            String token = getTokenFromRequest(httpRequest);
+            if (token != null) {
+                tokenBlacklistService.blacklistToken(token);
+            }
+
+            // 회원 탈퇴 처리
+            memberService.withdraw(id);
+
+            // Refresh Token 삭제
+            refreshTokenService.deleteByMemberId(id);
+
+            // 쿠키 삭제
+            clearTokenCookies(response);
+
+            return ResponseEntity.ok().body(Map.of("message", "구글 탈퇴가 완료되었습니다."));
+
+        } catch (Exception e) {
+            log.error("구글 탈퇴 처리 실패 - 사용자 ID: {}", id, e);
+            return ResponseEntity.status(500).body(Map.of("error", "탈퇴 처리 중 오류가 발생했습니다."));
+        }
+    }
+
+    private String getTokenFromRequest(HttpServletRequest request) {
+        // 1. Authorization 헤더에서 토큰 확인
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            return authHeader.substring(7);
+        }
+
+        // 2. 쿠키에서 토큰 확인
+        Cookie[] cookies = request.getCookies();
+        if (cookies != null) {
+            return Arrays.stream(cookies)
+                    .filter(cookie -> "access_token".equals(cookie.getName()))
+                    .map(Cookie::getValue)
+                    .findFirst()
+                    .orElse(null);
+        }
+
+        return null;
     }
 
     @PostMapping("/logout")
     public ResponseEntity<?> logout(@AuthenticationPrincipal Long id,
                                     HttpServletResponse response) {
-        // Refresh Token 삭제
-        refreshTokenService.deleteByMemberId(id);
-        // 쿠키 삭제
-        clearTokenCookies(response);
+        try {
+            // Refresh Token 삭제
+            refreshTokenService.deleteByMemberId(id);
 
-        return ResponseEntity.ok().build();
+            // 쿠키 삭제
+            clearTokenCookies(response);
+
+            return ResponseEntity.ok().body(Map.of("message", "로그아웃이 완료되었습니다."));
+
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of("error", "로그아웃 처리 중 오류가 발생했습니다."));
+        }
     }
 
     @PostMapping("/refresh")
