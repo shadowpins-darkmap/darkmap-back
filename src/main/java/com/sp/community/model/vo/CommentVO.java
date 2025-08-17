@@ -1,4 +1,4 @@
-package com.sp.community.model.dto;
+package com.sp.community.model.vo;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.AllArgsConstructor;

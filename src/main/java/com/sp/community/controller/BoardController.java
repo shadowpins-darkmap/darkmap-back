@@ -240,7 +240,7 @@ public class BoardController {
             ) @ModelAttribute BoardSearchDTO searchDTO,
             @Parameter(
                     description = "페이징 정보",
-                    example = "page=1&size=10&sort=createdAt,desc"
+                    example = "page=0&size=10&sort=createdAt,desc"
             ) @ModelAttribute PageRequestDTO pageRequestDTO) {
 
         log.info("게시글 목록 조회 요청: search={}, page={}", searchDTO, pageRequestDTO);
