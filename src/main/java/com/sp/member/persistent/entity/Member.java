@@ -47,10 +47,25 @@ public class Member {
 
     private LocalDateTime lastNicknameChangeAt;
 
+    // 사이트 이용약관 동의 여부 (기본값: true)
+    @Column(nullable = false, columnDefinition = "TINYINT(1) default 1")
+    private Boolean termsOfServiceAgreed;
+
+    // 개인정보 처리방침 동의 여부 (기본값: true)
+    @Column(nullable = false, columnDefinition = "TINYINT(1) default 1")
+    private Boolean privacyPolicyAgreed;
+
+    // 마케팅 광고 수신 동의 여부 (기본값: false)
+    @Column(nullable = false, columnDefinition = "TINYINT(1) default 0")
+    private Boolean marketingAgreed;
+
     public static MemberBuilder builder() {
         return new MemberBuilder()
                 .isDeleted(false)
-                .nicknameChangeCount(0);
+                .nicknameChangeCount(0)
+                .termsOfServiceAgreed(true)
+                .privacyPolicyAgreed(true)
+                .marketingAgreed(false);
     }
 
     public void increaseLoginVisitCount() {
@@ -82,5 +97,10 @@ public class Member {
             return null; // 처음 변경하는 경우
         }
         return this.lastNicknameChangeAt.plusDays(30);
+    }
+
+    // 마케팅 동의 상태 변경 메서드 추가
+    public void updateMarketingAgreement(boolean agreed) {
+        this.marketingAgreed = agreed;
     }
 }
