@@ -18,6 +18,7 @@ public class MemberInfoResponse {
     private int loginCount;
     private int visitCount;
     private LocalDateTime joinedAt;
+    private Boolean marketingAgreed;
 
     public static MemberInfoResponse from(Member member) {
         return MemberInfoResponse.builder()
@@ -29,6 +30,7 @@ public class MemberInfoResponse {
                 .loginCount(member.getLoginCount())
                 .visitCount(member.getVisitCount())
                 .joinedAt(member.getJoinedAt())
+                .marketingAgreed(member.getMarketingAgreed())
                 .build();
     }
 }
