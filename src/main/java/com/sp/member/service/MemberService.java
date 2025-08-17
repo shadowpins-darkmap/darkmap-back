@@ -1,6 +1,7 @@
 package com.sp.member.service;
 
 import com.sp.member.exception.NicknameChangeException;
+import com.sp.member.model.vo.MemberInfoResponse;
 import com.sp.member.model.vo.NicknameChangeInfo;
 import com.sp.member.persistent.entity.Member;
 import com.sp.member.model.type.AuthType;
@@ -8,11 +9,13 @@ import com.sp.member.persistent.repository.MemberRepository;
 import com.sp.member.util.BadWordFilter;
 import com.sp.member.util.NicknameGenerator;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class MemberService {
@@ -62,6 +65,25 @@ public class MemberService {
         });
     }
 
+    /**
+     * 마케팅 동의 상태 토글
+     */
+    public MemberInfoResponse toggleMarketingAgreementById(Long id) {
+        Member member = findMemberByPrimaryKey(id);
+
+        boolean oldStatus = member.getMarketingAgreed();
+        boolean newStatus = !oldStatus;
+        member.updateMarketingAgreement(newStatus);
+
+        log.info("Marketing agreement toggled - id: {}, memberId: {}, {} -> {}",
+                id, member.getMemberId(), oldStatus, newStatus);
+
+        return MemberInfoResponse.from(member);
+    }
+    private Member findMemberByPrimaryKey(Long id) {
+        return memberRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다: " + id));
+    }
 
     public Member updateNickname(Long memberId, String newNickname) {
         Member member = memberRepository.findById(memberId)
@@ -95,7 +117,7 @@ public class MemberService {
     public long getTotalMemberCount() {
         return memberRepository.count(); // 탈퇴한 회원도 카운트 수에 포함
     }
-    
+
     @Transactional(readOnly = true)
     public NicknameChangeInfo getNicknameChangeInfo(Long memberId) {
         Member member = memberRepository.findById(memberId)
