@@ -152,6 +152,17 @@ public interface BoardRepository extends JpaRepository<BoardEntity, Long> {
     Long countByAuthorIdAndNotDeleted(@Param("authorId") String authorId);
 
     /**
+     * 특정 유저가 작성한 승인된 제보글 개수 조회
+     */
+    @Query("SELECT COUNT(b) FROM BoardEntity b " +
+            "WHERE b.authorId = :authorId " +
+            "AND b.category = :category " +
+            "AND b.reportApproved = true " +
+            "AND b.isDeleted = false")
+    Long countApprovedReportsByAuthor(@Param("authorId") String authorId,
+                                      @Param("category") String category);
+
+    /**
      * 오늘 작성된 게시글 수 조회
      */
     @Query("SELECT COUNT(b) FROM BoardEntity b WHERE DATE(b.createdAt) = CURRENT_DATE AND b.isDeleted = false")

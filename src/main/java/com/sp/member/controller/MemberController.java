@@ -1,5 +1,10 @@
 package com.sp.member.controller;
 
+import com.nimbusds.openid.connect.sdk.UserInfoResponse;
+import com.sp.community.model.dto.UserActivitySummaryDTO;
+import com.sp.community.service.BoardService;
+import com.sp.community.service.CommentService;
+import com.sp.community.service.UserNotificationService;
 import com.sp.member.exception.NicknameChangeException;
 import com.sp.member.model.vo.MemberInfoResponse;
 import com.sp.member.model.vo.UpdateNicknameRequest;
@@ -10,6 +15,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -29,6 +35,9 @@ import java.util.Map;
 public class MemberController {
 
     private final MemberService memberService;
+    private final UserNotificationService userNotificationService;
+    private final CommentService commentService;
+    private final BoardService boardService;
 
     @Operation(
             summary = "내 프로필 조회",
@@ -71,9 +80,67 @@ public class MemberController {
 
     @Operation(
             summary = "내 정보 요약",
-            description = "현재 로그인한 사용자의 기본 정보를 조회합니다.",
+            description = "현재 로그인한 사용자의 기본 정보와 활동 통계를 조회합니다.",
             security = @SecurityRequirement(name = "Bearer Authentication")
     )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "내 정보 조회 성공",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = UserInfoResponse.class),
+                            examples = @ExampleObject(
+                                    name = "성공 응답 예시",
+                                    description = "사용자 정보 조회 성공 시 반환되는 데이터",
+                                    value = """
+                                {
+                                  "id": 12345,
+                                  "email": "user@example.com",
+                                  "nickname": "다크맵유저",
+                                  "level": 3,
+                                  "loginCount": 127,
+                                  "joinedAt": "2024-01-15T09:30:00",
+                                  "myCommentCount": 89,
+                                  "newCommentsCount": 5,
+                                  "newLikesCount": 12,
+                                  "approvedReportCount": 7
+                                }
+                                """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "인증 실패",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    name = "인증 실패",
+                                    value = """
+                                {
+                                  "error": "인증이 필요합니다."
+                                }
+                                """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "사용자를 찾을 수 없음",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    name = "사용자 미존재",
+                                    value = """
+                                {
+                                  "error": "사용자를 찾을 수 없습니다."
+                                }
+                                """
+                            )
+                    )
+            )
+    })
     @GetMapping("/me")
     public ResponseEntity<?> getMe(@Parameter(hidden = true) @AuthenticationPrincipal Long memberId) {
 
@@ -82,10 +149,10 @@ public class MemberController {
         }
 
         Member member = memberService.findById(memberId);
-
         if (member == null) {
             return ResponseEntity.status(404).body(Map.of("error", "사용자를 찾을 수 없습니다."));
         }
+        UserActivitySummaryDTO userActivitySummaryDTO = userNotificationService.getActivitySummary(memberId+"", 48);
 
         return ResponseEntity.ok(Map.of(
                 "id", member.getId(),
@@ -93,7 +160,11 @@ public class MemberController {
                 "nickname", member.getNickname(),
                 "level", member.getLevel(),
                 "loginCount", member.getLoginCount(),
-                "joinedAt", member.getJoinedAt()
+                "joinedAt", member.getJoinedAt(),
+                "myCommentCount", commentService.getMemberCommentCount(memberId),   // 사용자의 총 댓글 수
+                "newCommentsCount", userActivitySummaryDTO.getNewCommentsCount(),   // 새 댓글 수 (48시간)
+                "newLikesCount", userActivitySummaryDTO.getNewLikesCount(),         // 새 추천 수 (48시간)
+                "approvedReportCount", boardService.getApprovedReportCountByAuthor(memberId+"") // 사용자의 제보 중 지도에 등록된 수
         ));
     }
 

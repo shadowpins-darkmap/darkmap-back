@@ -62,6 +62,30 @@ public class BoardService {
     }
 
     /**
+     * 특정 유저가 작성한 승인된 제보글 개수 조회
+     *
+     * @param authorId 작성자 ID
+     * @return 승인된 제보글 개수
+     */
+    public Long getApprovedReportCountByAuthor(String authorId) {
+        if (authorId == null || authorId.trim().isEmpty()) {
+            throw new IllegalArgumentException("작성자 ID는 필수입니다.");
+        }
+
+        try {
+            Long count = boardRepository.countApprovedReportsByAuthor(
+                    authorId, BoardEntity.CATEGORY_INCIDENTREPORT);
+
+            log.info("사용자 [{}]의 승인된 제보글 개수: {}", authorId, count);
+            return count != null ? count : 0L;
+
+        } catch (Exception e) {
+            log.error("승인된 제보글 개수 조회 중 오류 발생 - 사용자: {}", authorId, e);
+            throw new RuntimeException("승인된 제보글 개수 조회에 실패했습니다.", e);
+        }
+    }
+
+    /**
      * 게시글 생성
      */
     @Transactional
