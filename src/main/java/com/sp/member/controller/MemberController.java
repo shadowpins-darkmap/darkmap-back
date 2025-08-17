@@ -274,4 +274,111 @@ public class MemberController {
         ));
     }
 
+    @Operation(
+            summary = "마케팅 광고 수신 동의 토글",
+            description = "현재 로그인한 사용자의 마케팅 광고 수신 동의 상태를 토글합니다. 동의 상태가 true면 false로, false면 true로 변경됩니다.",
+            security = @SecurityRequirement(name = "Bearer Authentication")
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "마케팅 동의 상태 변경 성공",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    value = """
+                            {
+                              "success": true,
+                              "data": {
+                                "email": "user@example.com",
+                                "nickname": "사용자닉네임",
+                                "memberId": "12345",
+                                "level": "BASIC",
+                                "type": "KAKAO",
+                                "loginCount": 15,
+                                "visitCount": 23,
+                                "joinedAt": "2024-01-15T09:30:00",
+                                "marketingAgreed": true
+                              },
+                              "message": "마케팅 수신 동의가 활성화되었습니다."
+                            }
+                            """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "인증 실패 - 토큰이 없거나 유효하지 않음",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    value = """
+                            {
+                              "error": "인증이 필요합니다.",
+                              "code": "UNAUTHORIZED"
+                            }
+                            """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "403",
+                    description = "권한 없음 - 본인의 정보만 수정 가능",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    value = """
+                            {
+                              "error": "본인의 정보만 수정할 수 있습니다.",
+                              "code": "ACCESS_DENIED"
+                            }
+                            """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "사용자를 찾을 수 없음",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    value = """
+                            {
+                              "error": "사용자를 찾을 수 없습니다.",
+                              "code": "USER_NOT_FOUND"
+                            }
+                            """
+                            )
+                    )
+            )
+    })
+    @PutMapping("/marketing-agreement")
+    public ResponseEntity<?> toggleMarketingAgreement(
+            @Parameter(hidden = true) @AuthenticationPrincipal Long memberId) {
+
+        if (memberId == null) {
+            return ResponseEntity.status(401).body(Map.of(
+                    "error", "인증이 필요합니다.",
+                    "code", "UNAUTHORIZED"
+            ));
+        }
+
+        try {
+            MemberInfoResponse response = memberService.toggleMarketingAgreementById(memberId);
+            boolean isAgreed = response.getMarketingAgreed();
+
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "data", response,
+                    "message", "마케팅 수신 동의가 " + (isAgreed ? "활성화" : "비활성화") + "되었습니다."
+            ));
+
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(404).body(Map.of(
+                    "error", "사용자를 찾을 수 없습니다.",
+                    "code", "USER_NOT_FOUND"
+            ));
+        }
+    }
+
 }
