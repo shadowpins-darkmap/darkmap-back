@@ -1,5 +1,6 @@
 package com.sp.auth.jwt;
 
+import com.sp.token.service.TokenBlacklistService;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -21,6 +22,7 @@ import java.util.Arrays;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider jwtTokenProvider;
+    private final TokenBlacklistService tokenBlacklistService;
 
     @Override
     protected void doFilterInternal(
@@ -32,6 +34,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String token = getTokenFromRequest(request);
 
         if (token != null && jwtTokenProvider.validateToken(token)) {
+
+            // 블랙리스트 체크 - 로그아웃된 토큰인지 확인
+            if (tokenBlacklistService.isBlacklisted(token)) {
+                // 블랙리스트에 있는 토큰이면 인증 처리하지 않음
+                filterChain.doFilter(request, response);
+                return;
+            }
+
             Claims claims = jwtTokenProvider.getClaims(token);
             Long memberId = Long.parseLong(claims.getSubject());
             String role = claims.get("role", String.class);
