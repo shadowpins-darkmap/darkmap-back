@@ -6,7 +6,7 @@ import com.sp.exception.UnauthorizedException;
 import com.sp.community.model.dto.CommentCreateDTO;
 import com.sp.community.model.dto.CommentUpdateDTO;
 import com.sp.community.model.dto.PageRequestDTO;
-import com.sp.community.model.dto.CommentVO;
+import com.sp.community.model.vo.CommentVO;
 import com.sp.community.persistent.entity.BoardEntity;
 import com.sp.community.persistent.entity.CommentEntity;
 import com.sp.community.persistent.entity.CommentLikeEntity;

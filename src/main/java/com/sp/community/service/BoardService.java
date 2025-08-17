@@ -46,6 +46,22 @@ public class BoardService {
     private final MemberRepository memberRepository;
 
     /**
+     * 전체 게시글 개수 조회
+     */
+    public Long getTotalBoardCount() {
+        log.debug("전체 게시글 개수 조회");
+        return boardRepository.countAllNotDeleted();
+    }
+
+    /**
+     * 사건제보 카테고리 게시글 개수 조회
+     */
+    public Long getIncidentReportBoardCount() {
+        log.debug("사건제보 카테고리 게시글 개수 조회");
+        return boardRepository.countByCategoryAndNotDeleted(BoardEntity.CATEGORY_INCIDENTREPORT);
+    }
+
+    /**
      * 게시글 생성
      */
     @Transactional

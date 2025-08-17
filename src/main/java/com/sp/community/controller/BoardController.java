@@ -41,6 +41,119 @@ public class BoardController {
 
     private final BoardService boardService;
 
+
+    /**
+     * 전체 게시글 개수 조회
+     */
+    @Operation(
+            summary = "전체 게시글 개수 조회",
+            description = "삭제되지 않은 전체 게시글의 개수를 조회합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "전체 게시글 개수 조회 성공",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    value = """
+                    {
+                        "success": true,
+                        "message": "전체 게시글 개수 조회 성공",
+                        "data": 1250
+                    }
+                    """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "500",
+                    description = "서버 내부 오류",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    value = """
+                    {
+                        "success": false,
+                        "message": "서버 내부 오류가 발생했습니다.",
+                        "data": null
+                    }
+                    """
+                            )
+                    )
+            )
+    })
+    @GetMapping("/count")
+    public ResponseEntity<CommonApiResponse<Long>> getTotalBoardCount() {
+        log.info("전체 게시글 개수 조회 요청");
+
+        Long totalCount = boardService.getTotalBoardCount();
+
+        return ResponseEntity.ok(
+                CommonApiResponse.<Long>builder()
+                        .success(true)
+                        .message("전체 게시글 개수 조회 성공")
+                        .data(totalCount)
+                        .build()
+        );
+    }
+
+    /**
+     * 사건제보 카테고리 게시글 개수 조회
+     */
+    @Operation(
+            summary = "사건제보 게시글 개수 조회",
+            description = "삭제되지 않은 사건제보 카테고리 게시글의 개수를 조회합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "사건제보 게시글 개수 조회 성공",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    value = """
+                    {
+                        "success": true,
+                        "message": "사건제보 게시글 개수 조회 성공",
+                        "data": 85
+                    }
+                    """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "500",
+                    description = "서버 내부 오류",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    value = """
+                    {
+                        "success": false,
+                        "message": "서버 내부 오류가 발생했습니다.",
+                        "data": null
+                    }
+                    """
+                            )
+                    )
+            )
+    })
+    @GetMapping("/count/incident-reports")
+    public ResponseEntity<CommonApiResponse<Long>> getIncidentReportBoardCount() {
+        log.info("사건제보 카테고리 게시글 개수 조회 요청");
+
+        Long incidentReportCount = boardService.getIncidentReportBoardCount();
+
+        return ResponseEntity.ok(
+                CommonApiResponse.<Long>builder()
+                        .success(true)
+                        .message("사건제보 게시글 개수 조회 성공")
+                        .data(incidentReportCount)
+                        .build()
+        );
+    }
+
     /**
      * 게시글 목록 조회
      */
@@ -127,7 +240,7 @@ public class BoardController {
             ) @ModelAttribute BoardSearchDTO searchDTO,
             @Parameter(
                     description = "페이징 정보",
-                    example = "page=1&size=10&sort=createdAt,desc"
+                    example = "page=0&size=10&sort=createdAt,desc"
             ) @ModelAttribute PageRequestDTO pageRequestDTO) {
 
         log.info("게시글 목록 조회 요청: search={}, page={}", searchDTO, pageRequestDTO);
