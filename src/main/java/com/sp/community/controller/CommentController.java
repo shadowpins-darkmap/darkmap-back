@@ -4,7 +4,7 @@ import com.sp.community.model.dto.CommentCreateDTO;
 import com.sp.community.model.dto.CommentUpdateDTO;
 import com.sp.community.model.dto.PageRequestDTO;
 import com.sp.community.model.response.CommonApiResponse;
-import com.sp.community.model.dto.CommentVO;
+import com.sp.community.model.vo.CommentVO;
 import com.sp.community.service.CommentService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -20,7 +20,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;

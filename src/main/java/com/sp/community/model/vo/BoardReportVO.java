@@ -1,0 +1,156 @@
+package com.sp.community.model.vo;
+
+import com.fasterxml.jackson.annotation.JsonFormat;
+import com.sp.community.persistent.entity.BoardReportEntity;
+import lombok.*;
+
+import java.time.LocalDateTime;
+
+/**
+ * 게시글 신고 응답 VO
+ */
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+@ToString
+public class BoardReportVO {
+
+    /**
+     * 신고 ID
+     */
+    private Long reportId;
+
+    /**
+     * 게시글 ID
+     */
+    private Long boardId;
+
+    /**
+     * 게시글 제목
+     */
+    private String boardTitle;
+
+    /**
+     * 게시글 작성자 닉네임
+     */
+    private String boardAuthorNickname;
+
+    /**
+     * 신고자 ID
+     */
+    private String reporterId;
+
+    /**
+     * 신고자 닉네임
+     */
+    private String reporterNickname;
+
+    /**
+     * 신고 분류
+     */
+    private BoardReportEntity.ReportType reportType;
+
+    /**
+     * 신고 분류 설명
+     */
+    private String reportTypeDescription;
+
+    /**
+     * 신고 사유
+     */
+    private String reason;
+
+    /**
+     * 신고 상태
+     */
+    private BoardReportEntity.ReportStatus status;
+
+    /**
+     * 신고 상태 설명
+     */
+    private String statusDescription;
+
+    /**
+     * 신고 처리 결과
+     */
+    private String result;
+
+    /**
+     * 신고 처리자 ID
+     */
+    private String processorId;
+
+    /**
+     * 신고 생성 일시
+     */
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime createdAt;
+
+    /**
+     * 신고 수정 일시
+     */
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime updatedAt;
+
+    /**
+     * 신고 처리 완료 일시
+     */
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime processedAt;
+
+    /**
+     * 현재 사용자가 신고자인지 여부
+     */
+    private Boolean isReporter;
+
+    /**
+     * 처리 소요 시간 (시간 단위)
+     */
+    private Long processingHours;
+
+    /**
+     * 신고 처리 완료 여부
+     */
+    public boolean isProcessed() {
+        return status == BoardReportEntity.ReportStatus.APPROVED ||
+                status == BoardReportEntity.ReportStatus.REJECTED ||
+                status == BoardReportEntity.ReportStatus.CANCELLED;
+    }
+
+    /**
+     * 신고 처리 대기 중인지 확인
+     */
+    public boolean isPending() {
+        return status == BoardReportEntity.ReportStatus.PENDING;
+    }
+
+    /**
+     * 신고 검토 중인지 확인
+     */
+    public boolean isReviewing() {
+        return status == BoardReportEntity.ReportStatus.REVIEWING;
+    }
+
+    /**
+     * 승인된 신고인지 확인
+     */
+    public boolean isApproved() {
+        return status == BoardReportEntity.ReportStatus.APPROVED;
+    }
+
+    /**
+     * 거부된 신고인지 확인
+     */
+    public boolean isRejected() {
+        return status == BoardReportEntity.ReportStatus.REJECTED;
+    }
+
+    /**
+     * 취소된 신고인지 확인
+     */
+    public boolean isCancelled() {
+        return status == BoardReportEntity.ReportStatus.CANCELLED;
+    }
+}
