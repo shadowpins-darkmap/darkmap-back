@@ -497,4 +497,21 @@ public class BoardService {
                 .endDate(searchDTO.getEndDateTime())
                 .build();
     }
+
+    public Optional<BoardVO> getBoardById(Long boardId) {
+        return boardRepository.findByIdAndNotDeleted(boardId).map(this::convertToBoardVO);
+    }
+    /**
+     * Entity를 VO로 변환 (예시 - 실제로는 기존 변환 로직 사용)
+     */
+    private BoardVO convertToBoardVO(BoardEntity entity) {
+        return BoardVO.builder()
+                .boardId(entity.getBoardId())
+                .title(entity.getTitle())
+                .authorId(entity.getAuthorId())
+                .createdAt(entity.getCreatedAt())
+                .updatedAt(entity.getUpdatedAt())
+                .isReported(entity.getIsReported())
+                .build();
+    }
 }

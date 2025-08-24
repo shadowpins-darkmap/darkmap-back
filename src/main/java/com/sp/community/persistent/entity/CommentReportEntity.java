@@ -49,12 +49,6 @@ public class CommentReportEntity {
     private String reporterId;
 
     /**
-     * 신고한 사용자 닉네임
-     */
-    @Column(name = "reporter_nickname", nullable = false, length = 50)
-    private String reporterNickname;
-
-    /**
      * 신고 분류
      */
     @Enumerated(EnumType.STRING)
@@ -268,7 +262,6 @@ public class CommentReportEntity {
         return "CommentReportEntity{" +
                 "reportId=" + reportId +
                 ", reporterId='" + reporterId + '\'' +
-                ", reporterNickname='" + reporterNickname + '\'' +
                 ", reportType=" + reportType +
                 ", status=" + status +
                 ", createdAt=" + createdAt +

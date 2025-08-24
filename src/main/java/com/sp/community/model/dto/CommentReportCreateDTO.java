@@ -1,13 +1,13 @@
 package com.sp.community.model.dto;
 
-import com.sp.community.persistent.entity.BoardReportEntity;
+import com.sp.community.persistent.entity.CommentReportEntity;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.*;
 
 /**
- * 게시글 신고 생성 요청 DTO
+ * 댓글 신고 생성 요청 DTO
  */
 @Getter
 @Setter
@@ -15,13 +15,13 @@ import lombok.*;
 @AllArgsConstructor
 @Builder
 @ToString
-public class BoardReportCreateDTO {
+public class CommentReportCreateDTO {
 
     /**
-     * 신고할 게시글 ID
+     * 신고할 댓글 ID
      */
-    @NotNull(message = "게시글 ID는 필수입니다.")
-    private Long boardId;
+    @NotNull(message = "댓글 ID는 필수입니다.")
+    private Long commentId;
 
     /**
      * 신고자 ID
@@ -33,7 +33,7 @@ public class BoardReportCreateDTO {
      * 신고 분류
      */
     @NotNull(message = "신고 분류는 필수입니다.")
-    private BoardReportEntity.ReportType reportType;
+    private CommentReportEntity.ReportType reportType;
 
     /**
      * 신고 사유
@@ -52,6 +52,10 @@ public class BoardReportCreateDTO {
      * DTO 검증
      */
     public void validate() {
+        if (commentId == null || commentId <= 0) {
+            throw new IllegalArgumentException("유효하지 않은 댓글 ID입니다.");
+        }
+
         if (reason != null) {
             String trimmedReason = reason.trim();
             if (trimmedReason.length() < 10) {

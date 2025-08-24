@@ -1,5 +1,6 @@
 package com.sp.community.persistent.repository;
 
+import com.sp.community.model.vo.CommentVO;
 import com.sp.community.persistent.entity.CommentEntity;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -74,6 +75,7 @@ public interface CommentRepository extends JpaRepository<CommentEntity, Long> {
     @Query("SELECT c FROM CommentEntity c WHERE c.createdAt BETWEEN :startDate AND :endDate AND c.isDeleted = false AND c.isHidden = false ORDER BY c.createdAt DESC")
     Page<CommentEntity> findByCreatedAtBetweenAndVisible(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate, Pageable pageable);
 
+
     /**
      * 인기 댓글 조회 (좋아요 수 기준)
      */
@@ -147,4 +149,5 @@ public interface CommentRepository extends JpaRepository<CommentEntity, Long> {
     @Query("UPDATE CommentEntity c SET c.isDeleted = true, c.deletedAt = CURRENT_TIMESTAMP WHERE c.commentId = :commentId AND c.isDeleted = false")
     int deleteByCommentId(@Param("commentId") Long commentId);
 
+    Optional<CommentVO> findByCommentId(Long commentId);
 }
