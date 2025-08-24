@@ -106,6 +106,38 @@ public class BoardReportVO {
     private Long processingHours;
 
     /**
+     * 첨부파일 원본 이름
+     */
+    private String attachmentOriginalName;
+
+    /**
+     * 첨부파일 저장된 이름
+     */
+    private String attachmentStoredName;
+
+    /**
+     * 첨부파일 크기
+     */
+    private Long attachmentSize;
+
+    /**
+     * 첨부파일 MIME 타입
+     */
+    private String attachmentContentType;
+
+    /**
+     * 첨부파일 다운로드 URL
+     */
+    private String attachmentUrl;
+
+    /**
+     * 첨부파일 존재 여부
+     */
+    public boolean hasAttachment() {
+        return attachmentStoredName != null && !attachmentStoredName.trim().isEmpty();
+    }
+
+    /**
      * 신고 처리 완료 여부
      */
     public boolean isProcessed() {

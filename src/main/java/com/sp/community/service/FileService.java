@@ -233,4 +233,108 @@ public class FileService {
     private String getUploadPath() {
         return fileProperties.getUploadDir();
     }
+
+    /**
+     * 게시글 신고 첨부파일 업로드
+     */
+    public FileUploadResponse uploadAttachmentForBoardReport(Long reportId, MultipartFile file) {
+        // 파일 유효성 검증
+        validateReportAttachmentFile(file);
+
+        // 파일 저장
+        String storedFileName = saveReportFile(file);
+
+        // 응답 DTO 생성
+        return FileUploadResponse.builder()
+                .originalFileName(file.getOriginalFilename())
+                .storedFileName(storedFileName)
+                .fileUrl(fileProperties.getBaseUrl() + "reports/" + storedFileName)
+                .fileSize(file.getSize())
+                .contentType(file.getContentType())
+                .build();
+    }
+
+    /**
+     * 댓글 신고 첨부파일 업로드
+     */
+    public FileUploadResponse uploadAttachmentForCommentReport(Long reportId, MultipartFile file) {
+        // 파일 유효성 검증
+        validateReportAttachmentFile(file);
+
+        // 파일 저장
+        String storedFileName = saveReportFile(file);
+
+        // 응답 DTO 생성
+        return FileUploadResponse.builder()
+                .originalFileName(file.getOriginalFilename())
+                .storedFileName(storedFileName)
+                .fileUrl(fileProperties.getBaseUrl() + "reports/" + storedFileName)
+                .fileSize(file.getSize())
+                .contentType(file.getContentType())
+                .build();
+    }
+
+    /**
+     * 신고 첨부파일 유효성 검증
+     */
+    private void validateReportAttachmentFile(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("파일이 비어있습니다.");
+        }
+
+        // 파일 크기 검증 (5MB)
+        long maxSize = 5 * 1024 * 1024; // 5MB
+        if (file.getSize() > maxSize) {
+            throw new IllegalArgumentException("파일 크기가 너무 큽니다. 최대 5MB까지 업로드 가능합니다.");
+        }
+
+        // 파일 확장자 검증
+        String fileName = StringUtils.cleanPath(file.getOriginalFilename());
+        String extension = getFileExtension(fileName).toLowerCase();
+        String[] allowedExtensions = {"jpg", "jpeg", "png", "gif", "pdf", "doc", "docx"};
+
+        if (!Arrays.asList(allowedExtensions).contains(extension)) {
+            throw new IllegalArgumentException("지원하지 않는 파일 형식입니다. " +
+                    "허용된 확장자: " + String.join(", ", allowedExtensions));
+        }
+    }
+
+    /**
+     * 신고 파일 저장
+     */
+    private String saveReportFile(MultipartFile file) {
+        try {
+            // 업로드 디렉토리 생성 (reports 하위 폴더)
+            Path uploadPath = Paths.get(getUploadPath(), "reports");
+            if (!Files.exists(uploadPath)) {
+                Files.createDirectories(uploadPath);
+            }
+
+            // 고유한 파일명 생성
+            String originalFileName = StringUtils.cleanPath(file.getOriginalFilename());
+            String extension = getFileExtension(originalFileName);
+            String storedFileName = generateUniqueFileName(extension);
+
+            // 파일 저장
+            Path targetLocation = uploadPath.resolve(storedFileName);
+            Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
+
+            return storedFileName;
+        } catch (IOException e) {
+            throw new RuntimeException("신고 첨부파일 저장에 실패했습니다.", e);
+        }
+    }
+
+    /**
+     * 신고 첨부파일 삭제
+     */
+    public void deleteReportAttachment(String storedFileName) {
+        try {
+            Path filePath = Paths.get(getUploadPath(), "reports", storedFileName);
+            Files.deleteIfExists(filePath);
+            log.info("신고 첨부파일 삭제 완료: {}", storedFileName);
+        } catch (IOException e) {
+            log.error("신고 첨부파일 삭제 실패: {}", storedFileName, e);
+        }
+    }
 }

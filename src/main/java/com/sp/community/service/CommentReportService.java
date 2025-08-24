@@ -2,11 +2,13 @@ package com.sp.community.service;
 
 import com.sp.community.model.dto.CommentReportCreateDTO;
 import com.sp.community.model.dto.PageRequestDTO;
+import com.sp.community.model.response.FileUploadResponse;
 import com.sp.community.model.vo.CommentReportVO;
 import com.sp.community.persistent.entity.CommentEntity;
 import com.sp.community.persistent.entity.CommentReportEntity;
 import com.sp.community.persistent.repository.CommentReportRepository;
 import com.sp.community.persistent.repository.CommentRepository;
+import com.sp.config.FileProperties;
 import com.sp.exception.CommentNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,6 +31,8 @@ public class CommentReportService {
 
     private final CommentReportRepository commentReportRepository;
     private final CommentRepository commentRepository;
+    private final FileProperties fileProperties;
+    private final FileService fileService;
 
     /**
      * 댓글 신고 생성
@@ -72,6 +76,30 @@ public class CommentReportService {
         // 신고 저장
         CommentReportEntity savedReport = commentReportRepository.save(reportEntity);
 
+        // 첨부파일 처리
+        if (createDTO.hasAttachment()) {
+            try {
+                FileUploadResponse fileResponse = fileService.uploadAttachmentForCommentReport(
+                        savedReport.getReportId(), createDTO.getAttachmentFile());
+
+                // 엔티티에 첨부파일 정보 저장
+                savedReport.setAttachmentOriginalName(fileResponse.getOriginalFileName());
+                savedReport.setAttachmentStoredName(fileResponse.getStoredFileName());
+                savedReport.setAttachmentPath(getReportAttachmentPath());
+                savedReport.setAttachmentSize(fileResponse.getFileSize());
+                savedReport.setAttachmentContentType(fileResponse.getContentType());
+
+                commentReportRepository.save(savedReport);
+
+                log.info("댓글 신고 첨부파일 업로드 완료: reportId={}, fileName={}",
+                        savedReport.getReportId(), fileResponse.getOriginalFileName());
+            } catch (Exception e) {
+                log.error("댓글 신고 첨부파일 업로드 실패: reportId={}", savedReport.getReportId(), e);
+                // 첨부파일 업로드 실패 시에도 신고는 생성되도록 처리
+                // 필요에 따라 예외를 던질지, 로그만 남길지 결정
+            }
+        }
+
         // 댓글에 신고 추가
         comment.getReports().add(savedReport);
 
@@ -82,6 +110,13 @@ public class CommentReportService {
                 savedReport.getReportId(), comment.getCommentId());
 
         return convertToVO(savedReport);
+    }
+
+    /**
+     * 신고 첨부파일 저장 경로
+     */
+    private String getReportAttachmentPath() {
+        return fileProperties.getUploadDir() + "/reports";
     }
 
     /**
@@ -165,7 +200,14 @@ public class CommentReportService {
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
                 .processedAt(entity.getProcessedAt())
+                .attachmentOriginalName(entity.getAttachmentOriginalName())
+                .attachmentStoredName(entity.getAttachmentStoredName())
+                .attachmentSize(entity.getAttachmentSize())
+                .attachmentContentType(entity.getAttachmentContentType())
                 .build();
+        if (entity.hasAttachment()) {
+            vo.setAttachmentUrl(fileProperties.getBaseUrl() + "reports/" + entity.getAttachmentStoredName());
+        }
 
         // 처리 소요 시간 계산
         if (entity.getCreatedAt() != null && entity.getProcessedAt() != null) {
