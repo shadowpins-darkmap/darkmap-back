@@ -72,6 +72,16 @@ public class CommentReportController {
 
             CommentReportVO reportVO = commentReportService.createReport(createDTO);
 
+            try {
+                emailService.sendCommentReportEmail(commentId, createDTO, reportVO);
+                log.info("댓글 신고 이메일 발송 시도: commentId={}", commentId);
+            } catch (Exception emailEx) {
+                // 이메일 발송 실패해도 신고 접수는 성공으로 처리
+                log.warn("댓글 신고 이메일 발송 실패 (신고 접수는 성공): commentId={}, error={}",
+                        commentId, emailEx.getMessage());
+                // 예외를 다시 던지지 않음
+            }
+
             return ResponseEntity.status(HttpStatus.CREATED).body(
                     CommonApiResponse.<CommentReportVO>builder()
                             .success(true)

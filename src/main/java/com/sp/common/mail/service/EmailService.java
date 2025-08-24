@@ -3,8 +3,12 @@ package com.sp.common.mail.service;
 import com.sp.common.mail.model.dto.CommentReportInfoDto;
 import com.sp.common.mail.model.dto.EmailDto;
 import com.sp.common.mail.model.dto.ReportEmailDto;
+import com.sp.community.model.dto.BoardReportCreateDTO;
 import com.sp.community.model.dto.CommentReportCreateDTO;
+import com.sp.community.model.vo.BoardReportVO;
+import com.sp.community.model.vo.BoardVO;
 import com.sp.community.model.vo.CommentReportVO;
+import com.sp.community.service.BoardService;
 import com.sp.community.service.CommentReportService;
 import com.sp.community.service.CommentService;
 import com.sp.member.persistent.repository.MemberRepository;
@@ -30,141 +34,305 @@ import java.time.format.DateTimeFormatter;
 public class EmailService {
 
     // Spring Boot가 자동으로 JavaMailSender 빈을 생성해줍니다
-    /*private final JavaMailSender mailSender;
+    private final JavaMailSender mailSender;
     private final CommentService commentService;
     private final CommentReportService commentReportService;
+    private final BoardService boardService;
     private final MemberRepository memberRepository;
 
-    @Value("${mail.report.to:kdark.report@gmail.com}")
+    @Value("${spring.mail.username}")
     private String reportEmail;
 
-    @Value("${mail.report.from:kdark.report@gmail.com}")
+    @Value("${spring.mail.username}")
     private String fromEmail;
 
     @Value("${mail.report.subject-prefix:[제보접수]}")
     private String subjectPrefix;
+    /**
+     * 게시글 신고 이메일 발송
+     */
+    public void sendBoardReportEmail(Long boardId,
+                                     BoardReportCreateDTO createDTO,
+                                     BoardReportVO reportVO) {
+        try {
+            // 게시글 정보 조회
+            BoardVO boardInfo = boardService.getBoardById(boardId)
+                    .orElse(createDefaultBoardInfo(boardId));
 
-    *//**
+            // 신고자 닉네임 조회
+            String reporterNickname = memberRepository.findNicknameByMemberId(createDTO.getReporterId())
+                    .orElse(createDTO.getReporterId());
+
+            // 이메일 발송
+            ReportEmailDto reportDto = createBoardReportEmailDto(
+                    boardInfo, createDTO, reportVO, reporterNickname);
+
+            sendReportEmail(reportDto);
+
+            log.info("게시글 신고 이메일 발송 성공 - boardId: {}", boardId);
+
+        } catch (Exception e) {
+            log.error("게시글 신고 이메일 발송 실패 - boardId: {}", boardId, e);
+            throw e;
+        }
+    }
+
+    /**
+     * 게시글 정보 조회 실패시 기본 정보 생성
+     */
+    private BoardVO createDefaultBoardInfo(Long boardId) {
+        return BoardVO.builder()
+                .boardId(boardId)
+                .title("게시글 정보 조회 실패")
+                .authorNickname("알 수 없음")
+                .category("UNKNOWN")
+                .createdAt(LocalDateTime.now())
+                .build();
+    }
+
+    /**
+     * 게시글 신고 이메일 DTO 생성
+     */
+    private ReportEmailDto createBoardReportEmailDto(BoardVO boardInfo,
+                                                     BoardReportCreateDTO createDTO,
+                                                     BoardReportVO reportVO,
+                                                     String reporterNickname) {
+
+        String reportId = generateBoardReportId(boardInfo.getBoardId(), reportVO.getReportId());
+        String emailContent = createBoardReportEmailContent(boardInfo, createDTO, reportId, reporterNickname);
+
+        return ReportEmailDto.builder()
+                .reportTitle("게시글 신고 접수")
+                .reportContent(emailContent)
+                .reportCategory("게시글 신고 - " + createDTO.getReportType().toString())
+                .reporterName(reporterNickname)
+                .reporterEmail(null) // 필요시 사용자 이메일 추가
+                .reportDate(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")))
+                .reportId(reportId)
+                .attachmentFile(createDTO.getAttachmentFile()) // 첨부파일 추가
+                .build();
+    }
+
+    /**
+     * 게시글 신고 ID 생성
+     */
+    private String generateBoardReportId(Long boardId, Long reportVOId) {
+        return String.format("BOARD_REPORT_%d_%d_%d",
+                boardId, reportVOId, System.currentTimeMillis());
+    }
+
+    /**
+     * 게시글 신고 이메일 내용 생성
+     */
+    private String createBoardReportEmailContent(BoardVO boardInfo,
+                                                 BoardReportCreateDTO createDTO,
+                                                 String reportId,
+                                                 String reporterNickname) {
+        return String.format("""
+            게시글 신고가 접수되었습니다.
+            
+            === 신고 정보 ===
+            • 신고 ID: %s
+            • 신고자: %s
+            • 신고 유형: %s
+            • 신고 시간: %s
+            %s
+            
+            === 신고 대상 게시글 ===
+            • 게시글 ID: %s
+            • 게시글 제목: %s
+            • 게시글 작성자: %s
+            • 게시글 카테고리: %s
+            • 게시글 작성시간: %s
+            %s
+            
+            === 신고 사유 ===
+            %s
+            %s
+            
+            === 처리 안내 ===
+            관리자 페이지에서 게시글 ID %s로 검색하여 확인 및 처리해주세요.
+            
+            ---
+            다크맵 게시글 신고 시스템에서 자동 발송된 메일입니다.
+            """,
+                reportId,
+                reporterNickname,
+                createDTO.getReportType().getDescription(),
+                LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy년 MM월 dd일 HH시 mm분")),
+                createDTO.hasAttachment() ? "• 첨부파일: " + createDTO.getAttachmentFile().getOriginalFilename() : "",
+                boardInfo.getBoardId(),
+                truncateText(boardInfo.getTitle(), 100),
+                boardInfo.getAuthorNickname(),
+                boardInfo.getCategory(),
+                boardInfo.getCreatedAt() != null ?
+                        boardInfo.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy년 MM월 dd일 HH시 mm분")) : "알 수 없음",
+                boardInfo.isIncidentReportCategory() && boardInfo.getReportLocation() != null ?
+                        "• 제보 위치: " + boardInfo.getReportLocation() : "",
+                createDTO.getReason(),
+                createDTO.getAdditionalInfo() != null && !createDTO.getAdditionalInfo().trim().isEmpty() ?
+                        "\n\n[추가 설명]\n" + createDTO.getAdditionalInfo() : "",
+                boardInfo.getBoardId()
+        );
+    }
+
+    /**
      * 댓글 신고 이메일 발송
      *
      * @param commentId 댓글 ID
      * @param createDTO 신고 생성 정보
      * @param reportVO 생성된 신고 정보
-     *//*
+     */
     public void sendCommentReportEmail(Long commentId,
                                        CommentReportCreateDTO createDTO,
                                        CommentReportVO reportVO) {
         try {
-            // 댓글 정보 조회 (서비스에서 DTO로 반환)
-            CommentReportInfoDto commentInfo = commentService.getCommentReportInfo(commentId)
-                    .orElse(createDefaultCommentInfo(commentId));
+            log.info("댓글 신고 이메일 발송 시작: commentId={}, reportId={}",
+                    commentId, reportVO.getReportId());
+
+            // 댓글 정보 조회 (안전하게)
+            CommentReportInfoDto commentInfo = null;
+            try {
+                commentInfo = commentService.getCommentReportInfo(commentId)
+                        .orElse(null);
+            } catch (Exception e) {
+                log.warn("댓글 정보 조회 실패, 기본 정보로 대체: commentId={}", commentId, e);
+            }
+
+            // 댓글 정보가 없으면 기본 정보 생성
+            if (commentInfo == null) {
+                commentInfo = createDefaultCommentInfo(commentId);
+            }
+
+            // 신고자 정보 조회
+            String reporterNickname = "알 수 없음";
+            try {
+                reporterNickname = memberRepository.findNicknameByMemberId(createDTO.getReporterId())
+                        .orElse(createDTO.getReporterId());
+            } catch (Exception e) {
+                log.warn("신고자 닉네임 조회 실패: reporterId={}", createDTO.getReporterId());
+            }
 
             // 이메일 발송
             ReportEmailDto reportDto = createReportEmailDto(
-                    commentInfo, createDTO, reportVO);
+                    commentInfo, createDTO, reportVO, reporterNickname);
 
             sendReportEmail(reportDto);
 
-            log.info("댓글 신고 이메일 발송 성공 - commentId: {}",
-                    commentId);
+            log.info("댓글 신고 이메일 발송 성공: commentId={}, reportId={}",
+                    commentId, reportVO.getReportId());
 
         } catch (Exception e) {
-            log.error("댓글 신고 이메일 발송 실패 - commentId: {}",
-                    commentId, e);
-            throw e;
+            log.error("댓글 신고 이메일 발송 실패: commentId={}, reportId={}",
+                    commentId, reportVO.getReportId(), e);
+            // 이메일 발송 실패해도 예외를 다시 던지지 않음
         }
     }
-    *//**
-     * 댓글 정보 조회 실패시 기본 정보 생성
-     *//*
+
+    /**
+     * 댓글 정보 조회 실패시 기본 정보 생성 (수정)
+     */
     private CommentReportInfoDto createDefaultCommentInfo(Long commentId) {
+        log.warn("댓글 정보를 기본값으로 설정: commentId={}", commentId);
+
         return CommentReportInfoDto.builder()
                 .commentId(commentId)
                 .boardId(0L)
                 .commentContent("댓글 정보 조회 실패")
+                .commentAuthorId("unknown")
                 .commentAuthorNickname("알 수 없음")
                 .commentCreatedAt(LocalDateTime.now())
                 .boardTitle("게시글 정보 없음")
                 .boardCategory("UNKNOWN")
+                .boardAuthorNickname("알 수 없음")
                 .build();
     }
 
-    *//**
-     * 신고 이메일 DTO 생성
-     *//*
+    /**
+     * 신고 이메일 DTO 생성 (수정)
+     */
     private ReportEmailDto createReportEmailDto(CommentReportInfoDto commentInfo,
                                                 CommentReportCreateDTO createDTO,
-                                                CommentReportVO reportVO) {
+                                                CommentReportVO reportVO,
+                                                String reporterNickname) {
 
         String reportId = generateReportId(commentInfo.getCommentId(), reportVO.getReportId());
-        String emailContent = createEmailContent(commentInfo, createDTO, reportId);
+        String emailContent = createEmailContent(commentInfo, createDTO, reportId, reporterNickname);
 
         return ReportEmailDto.builder()
                 .reportTitle("댓글 신고 접수")
                 .reportContent(emailContent)
                 .reportCategory("댓글 신고 - " + createDTO.getReportType().toString())
+                .reporterName(reporterNickname)
                 .reporterEmail(null) // 필요시 사용자 이메일 추가
                 .reportDate(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")))
                 .reportId(reportId)
-                .attachmentFile(null)
+                .attachmentFile(createDTO.getAttachmentFile()) // 첨부파일 추가
                 .build();
     }
 
-    *//**
+    /**
      * 신고 ID 생성
-     *//*
+     */
     private String generateReportId(Long commentId, Long reportVOId) {
         return String.format("CMT_REPORT_%d_%d_%d",
                 commentId, reportVOId, System.currentTimeMillis());
     }
 
-    *//**
-     * 이메일 내용 생성
-     *//*
+    /**
+     * 이메일 내용 생성 (첨부파일 정보 포함)
+     */
     private String createEmailContent(CommentReportInfoDto commentInfo,
                                       CommentReportCreateDTO createDTO,
-                                      String reportId) {
+                                      String reportId, String reporterNickname) {
         return String.format("""
-                댓글 신고가 접수되었습니다.
-                
-                === 신고 정보 ===
-                • 신고 ID: %s
-                • 신고 유형: %s
-                • 신고 시간: %s
-                
-                === 신고 대상 댓글 ===
-                • 댓글 ID: %s
-                • 댓글 내용: %s
-                • 댓글 작성자: %s
-                • 댓글 작성시간: %s
-                
-                === 관련 게시글 ===
-                • 게시글 제목: %s
-                
-                === 신고 사유 ===
-                %s
-                
-                === 처리 안내 ===
-                관리자 페이지에서 댓글 ID %s로 검색하여 확인 및 처리해주세요.
-                
-                ---
-                다크맵 댓글 신고 시스템에서 자동 발송된 메일입니다.
-                """,
+            댓글 신고가 접수되었습니다.
+            
+            === 신고 정보 ===
+            • 신고 ID: %s
+            • 신고 유형: %s
+            • 신고 시간: %s
+            %s
+            
+            === 신고 대상 댓글 ===
+            • 댓글 ID: %s
+            • 댓글 내용: %s
+            • 댓글 작성자: %s
+            • 댓글 작성시간: %s
+            
+            === 관련 게시글 ===
+            • 게시글 제목: %s
+            
+            === 신고 사유 ===
+            %s
+            %s
+            
+            === 처리 안내 ===
+            관리자 페이지에서 댓글 ID %s로 검색하여 확인 및 처리해주세요.
+            
+            ---
+            다크맵 댓글 신고 시스템에서 자동 발송된 메일입니다.
+            """,
                 reportId,
-                createDTO.getReportType().toString(),
+                createDTO.getReportType().getDescription(),
                 LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy년 MM월 dd일 HH시 mm분")),
+                createDTO.hasAttachment() ? "• 첨부파일: " + createDTO.getAttachmentFile().getOriginalFilename() : "",
                 commentInfo.getCommentId(),
-                commentInfo.getCommentContent(),
+                truncateText(commentInfo.getCommentContent(), 200),
+                commentInfo.getCommentAuthorDisplayName(),
                 commentInfo.getCommentCreatedAt() != null ?
                         commentInfo.getCommentCreatedAt().format(DateTimeFormatter.ofPattern("yyyy년 MM월 dd일 HH시 mm분")) : "알 수 없음",
+                commentInfo.getBoardTitleOrDefault(),
                 createDTO.getReason(),
+                createDTO.getAdditionalInfo() != null && !createDTO.getAdditionalInfo().trim().isEmpty() ?
+                        "\n\n[추가 설명]\n" + createDTO.getAdditionalInfo() : "",
                 commentInfo.getCommentId()
         );
     }
 
-    *//**
+    /**
      * 텍스트 길이 제한
-     *//*
+     */
     private String truncateText(String text, int maxLength) {
         if (text == null) return "내용 없음";
         if (text.length() <= maxLength) return text;
@@ -172,9 +340,9 @@ public class EmailService {
     }
 
     /// ///////////////////////////////////////////////////////////////////////////////////////
-    *//**
+    /**
      * 제보 이메일 전송
-     *//*
+     */
     public void sendReportEmail(ReportEmailDto reportDto) {
         try {
             validateReportDto(reportDto);
@@ -207,9 +375,9 @@ public class EmailService {
         }
     }
 
-    *//**
+    /**
      * 일반 이메일 전송
-     *//*
+     */
     public void sendEmail(EmailDto emailDto) throws MessagingException, IOException {
         MimeMessage message = mailSender.createMimeMessage();
         MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
@@ -232,9 +400,9 @@ public class EmailService {
         mailSender.send(message);
     }
 
-    *//**
+    /**
      * 제보 DTO 유효성 검사
-     *//*
+     */
     private void validateReportDto(ReportEmailDto reportDto) {
         if (reportDto == null) {
             throw new IllegalArgumentException("제보 정보가 없습니다.");
@@ -258,9 +426,9 @@ public class EmailService {
         }
     }
 
-    *//**
+    /**
      * 제보 이메일 HTML 템플릿 생성
-     *//*
+     */
     private String createReportEmailTemplate(ReportEmailDto reportDto) {
         StringBuilder html = new StringBuilder();
 
@@ -365,9 +533,9 @@ public class EmailService {
         return html.toString();
     }
 
-    *//**
+    /**
      * HTML 이스케이프 처리
-     *//*
+     */
     private String escapeHtml(String text) {
         if (text == null) return "";
         return text.replace("&", "&amp;")
@@ -377,18 +545,18 @@ public class EmailService {
                 .replace("'", "&#x27;");
     }
 
-    *//**
+    /**
      * 파일 크기 포맷팅
-     *//*
+     */
     private String formatFileSize(long size) {
         if (size < 1024) return size + " bytes";
         if (size < 1024 * 1024) return String.format("%.1f KB", size / 1024.0);
         return String.format("%.1f MB", size / (1024.0 * 1024.0));
     }
 
-    *//**
+    /**
      * 첨부파일명 생성
-     *//*
+     */
     private String generateAttachmentName(MultipartFile file) {
         if (file == null || file.isEmpty()) {
             return null;
@@ -403,5 +571,5 @@ public class EmailService {
         }
 
         return "darkmap_report_" + timestamp;
-    }*/
+    }
 }
