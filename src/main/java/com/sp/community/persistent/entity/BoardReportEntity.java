@@ -142,6 +142,43 @@ public class BoardReportEntity {
     }
 
     /**
+     * 신고 첨부파일명 (원본)
+     */
+    @Column(name = "attachment_original_name", length = 255)
+    private String attachmentOriginalName;
+
+    /**
+     * 신고 첨부파일명 (저장된)
+     */
+    @Column(name = "attachment_stored_name", length = 255)
+    private String attachmentStoredName;
+
+    /**
+     * 신고 첨부파일 경로
+     */
+    @Column(name = "attachment_path", length = 500)
+    private String attachmentPath;
+
+    /**
+     * 신고 첨부파일 크기
+     */
+    @Column(name = "attachment_size")
+    private Long attachmentSize;
+
+    /**
+     * 신고 첨부파일 MIME 타입
+     */
+    @Column(name = "attachment_content_type", length = 100)
+    private String attachmentContentType;
+
+    /**
+     * 첨부파일 존재 여부 확인
+     */
+    public boolean hasAttachment() {
+        return attachmentStoredName != null && !attachmentStoredName.trim().isEmpty();
+    }
+
+    /**
      * 엔티티 저장 전 실행
      */
     @PrePersist

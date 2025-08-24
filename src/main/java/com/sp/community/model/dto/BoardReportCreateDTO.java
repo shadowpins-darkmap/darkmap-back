@@ -5,6 +5,10 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * 게시글 신고 생성 요청 DTO
@@ -49,6 +53,53 @@ public class BoardReportCreateDTO {
     private String additionalInfo;
 
     /**
+     * 신고 첨부파일
+     */
+    private MultipartFile attachmentFile;
+
+    /**
+     * 첨부파일 존재 여부 확인
+     */
+    public boolean hasAttachment() {
+        return attachmentFile != null && !attachmentFile.isEmpty();
+    }
+
+    /**
+     * 첨부파일 유효성 검증
+     */
+    public boolean isValidAttachmentFile() {
+        if (!hasAttachment()) {
+            return true; // 첨부파일이 없어도 유효 (선택사항)
+        }
+
+        // 파일 크기 확인 (5MB 이하)
+        long maxSize = 5 * 1024 * 1024; // 5MB
+        if (attachmentFile.getSize() > maxSize) {
+            return false;
+        }
+
+        // 파일 확장자 확인
+        String originalFilename = attachmentFile.getOriginalFilename();
+        if (originalFilename == null || originalFilename.trim().isEmpty()) {
+            return false;
+        }
+
+        String extension = getFileExtension(originalFilename).toLowerCase();
+        List<String> allowedExtensions = Arrays.asList("jpg", "jpeg", "png", "gif", "pdf", "doc", "docx");
+        return allowedExtensions.contains(extension);
+    }
+
+    /**
+     * 파일 확장자 추출
+     */
+    private String getFileExtension(String filename) {
+        if (filename == null || !filename.contains(".")) {
+            return "";
+        }
+        return filename.substring(filename.lastIndexOf(".") + 1);
+    }
+
+    /**
      * DTO 검증
      */
     public void validate() {
@@ -61,6 +112,11 @@ public class BoardReportCreateDTO {
 
         if (reportType == null) {
             throw new IllegalArgumentException("신고 분류를 선택해주세요.");
+        }
+        // 첨부파일 검증 추가
+        if (hasAttachment() && !isValidAttachmentFile()) {
+            throw new IllegalArgumentException("유효하지 않은 첨부파일입니다. " +
+                    "JPG, PNG, PDF, DOC, DOCX 형식의 5MB 이하 파일만 업로드 가능합니다.");
         }
     }
 

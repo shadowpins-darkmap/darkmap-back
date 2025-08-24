@@ -3,11 +3,13 @@ package com.sp.community.service;
 import com.sp.community.model.dto.BoardReportCreateDTO;
 import com.sp.community.model.dto.BoardReportProcessDTO;
 import com.sp.community.model.dto.BoardReportSearchDTO;
+import com.sp.community.model.response.FileUploadResponse;
 import com.sp.community.model.vo.BoardReportVO;
 import com.sp.community.persistent.entity.BoardEntity;
 import com.sp.community.persistent.entity.BoardReportEntity;
 import com.sp.community.persistent.repository.BoardReportRepository;
 import com.sp.community.persistent.repository.BoardRepository;
+import com.sp.config.FileProperties;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -34,6 +36,8 @@ public class BoardReportService {
 
     private final BoardReportRepository boardReportRepository;
     private final BoardRepository boardRepository;
+    private final FileProperties fileProperties;
+    private final FileService fileService;
 
     /**
      * 게시글 신고 생성
@@ -72,6 +76,29 @@ public class BoardReportService {
         // 신고 저장
         BoardReportEntity savedReport = boardReportRepository.save(reportEntity);
 
+        // 첨부파일 처리
+        if (createDTO.hasAttachment()) {
+            try {
+                FileUploadResponse fileResponse = fileService.uploadAttachmentForBoardReport(
+                        savedReport.getReportId(), createDTO.getAttachmentFile());
+
+                // 엔티티에 첨부파일 정보 저장
+                savedReport.setAttachmentOriginalName(fileResponse.getOriginalFileName());
+                savedReport.setAttachmentStoredName(fileResponse.getStoredFileName());
+                savedReport.setAttachmentPath(getReportAttachmentPath());
+                savedReport.setAttachmentSize(fileResponse.getFileSize());
+                savedReport.setAttachmentContentType(fileResponse.getContentType());
+
+                boardReportRepository.save(savedReport);
+
+                log.info("게시글 신고 첨부파일 업로드 완료: reportId={}, fileName={}",
+                        savedReport.getReportId(), fileResponse.getOriginalFileName());
+            } catch (Exception e) {
+                log.error("게시글 신고 첨부파일 업로드 실패: reportId={}", savedReport.getReportId(), e);
+                // 첨부파일 업로드 실패 시에도 신고는 생성되도록 처리
+            }
+        }
+
         // 게시글에 신고 추가
         board.addReport(savedReport);
 
@@ -81,6 +108,13 @@ public class BoardReportService {
         log.info("게시글 신고 생성 완료: reportId={}, boardId={}", savedReport.getReportId(), board.getBoardId());
 
         return convertToVO(savedReport);
+    }
+
+    /**
+     * 신고 첨부파일 저장 경로
+     */
+    private String getReportAttachmentPath() {
+        return fileProperties.getUploadDir() + "/reports";
     }
 
     /**
@@ -411,7 +445,15 @@ public class BoardReportService {
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
                 .processedAt(entity.getProcessedAt())
+                .attachmentOriginalName(entity.getAttachmentOriginalName())
+                .attachmentStoredName(entity.getAttachmentStoredName())
+                .attachmentSize(entity.getAttachmentSize())
+                .attachmentContentType(entity.getAttachmentContentType())
                 .build();
+
+        if (entity.hasAttachment()) {
+            vo.setAttachmentUrl(fileProperties.getBaseUrl() + "reports/" + entity.getAttachmentStoredName());
+        }
 
         // 처리 소요 시간 계산
         if (entity.getCreatedAt() != null && entity.getProcessedAt() != null) {
