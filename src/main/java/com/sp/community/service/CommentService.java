@@ -334,63 +334,61 @@ public class CommentService {
      * 댓글 신고용 정보 조회 (VO 기반)
      * CommentVO와 BoardVO를 조합해서 신고에 필요한 정보를 DTO로 반환
      */
+    @Transactional(readOnly = true)
     public Optional<CommentReportInfoDto> getCommentReportInfo(Long commentId) {
         try {
-            // 1. 댓글 VO 조회
-            Optional<CommentVO> commentVOOpt = getCommentById(commentId);
-            if (commentVOOpt.isEmpty()) {
+            // Entity 조회
+            Optional<CommentEntity> commentEntityOpt = commentRepository.findById(commentId);
+
+            if (commentEntityOpt.isEmpty()) {
                 log.warn("댓글을 찾을 수 없습니다: commentId={}", commentId);
                 return Optional.empty();
             }
 
-            CommentVO commentVO = commentVOOpt.get();
+            CommentEntity commentEntity = commentEntityOpt.get();
 
-            // 2. 게시글 VO 조회
-            BoardVO boardVO = null;
-            try {
-                Optional<BoardVO> boardVOOpt = boardService.getBoardById(commentVO.getBoardId());
-                boardVO = boardVOOpt.orElse(null);
-            } catch (Exception e) {
-                log.warn("게시글 정보 조회 실패: boardId={}", commentVO.getBoardId(), e);
+            // 게시글 정보 조회
+            BoardEntity boardEntity = null;
+            if (commentEntity.getBoard().getBoardId() != null) {
+                boardEntity = boardRepository.findById(commentEntity.getBoard().getBoardId()).orElse(null);
             }
 
-            // 3. DTO 생성
-            CommentReportInfoDto.CommentReportInfoDtoBuilder builder = CommentReportInfoDto.builder()
-                    // 댓글 정보
-                    .commentId(commentVO.getCommentId())
-                    .boardId(commentVO.getBoardId())
-                    .commentContent(commentVO.getContent())
-                    .commentAuthorId(commentVO.getAuthorId())
-                    .commentAuthorNickname(commentVO.getAuthorNickname())
-                    .commentCreatedAt(commentVO.getCreatedAt())
-                    .isCommentReported(commentVO.getIsReported())
-                    .commentStatus(commentVO.getStatus());
+            // CommentReportInfoDto 생성
+            CommentReportInfoDto dto = CommentReportInfoDto.builder()
+                    .commentId(commentEntity.getCommentId())
+                    .boardId(commentEntity.getBoard().getBoardId())
+                    .commentContent(commentEntity.getContent())
+                    .commentAuthorId(commentEntity.getAuthorId())
+                    .commentAuthorNickname(getAuthorNickname(commentEntity.getAuthorId()))
+                    .commentCreatedAt(commentEntity.getCreatedAt())
+                    //.commentStatus(commentEntity.getStatus())
+                    .isCommentReported(false) // 필요시 별도 조회
+                    // 게시글 정보
+                    .boardTitle(boardEntity != null ? boardEntity.getTitle() : "게시글 정보 없음")
+                    //.boardCategory(boardEntity != null ? boardEntity.getCategory().name() : "UNKNOWN")
+                    .boardAuthorNickname(boardEntity != null ? getAuthorNickname(boardEntity.getAuthorId()) : "알 수 없음")
+                    //.boardStatus(boardEntity != null ? boardEntity.getStatus() : null)
+                    .isBoardReported(false) // 필요시 별도 조회
+                    .build();
 
-            // 4. 게시글 정보 추가 (있는 경우)
-            if (boardVO != null) {
-                builder
-                        .boardTitle(boardVO.getTitle())
-                        .boardCategory(boardVO.getCategory())
-                        .boardAuthorNickname(boardVO.getAuthorNickname())
-                        .reportType(boardVO.getReportType())
-                        .reportLocation(boardVO.getReportLocation())
-                        .isBoardReported(boardVO.getIsReported())
-                        .boardStatus(boardVO.getStatus());
-            } else {
-                // 게시글 정보가 없는 경우 기본값 설정
-                builder
-                        .boardTitle("게시글 정보 없음")
-                        .boardCategory("UNKNOWN")
-                        .boardAuthorNickname("알 수 없음")
-                        .isBoardReported(false)
-                        .boardStatus(BoardVO.BoardStatus.ACTIVE);
-            }
-
-            return Optional.of(builder.build());
+            return Optional.of(dto);
 
         } catch (Exception e) {
             log.error("댓글 신고 정보 조회 중 오류 발생: commentId={}", commentId, e);
             return Optional.empty();
+        }
+    }
+
+    /**
+     * 사용자 닉네임 조회 헬퍼 메서드
+     */
+    private String getAuthorNickname(String authorId) {
+        try {
+            return memberRepository.findNicknameByMemberId(authorId)
+                    .orElse(authorId);
+        } catch (Exception e) {
+            log.warn("닉네임 조회 실패: authorId={}", authorId);
+            return authorId;
         }
     }
 

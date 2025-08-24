@@ -17,13 +17,13 @@ import java.util.Map;
 @RequestMapping("/api/email")
 @RequiredArgsConstructor
 public class EmailTestController {
-/*
+
     private final EmailService emailService;
 
-    *//**
+    /**
      * 1. 기본 제보 이메일 테스트 (파라미터 없음)
      * GET http://localhost:8080/api/email/test
-     *//*
+     */
     @GetMapping("/test")
     public ResponseEntity<Map<String, Object>> sendBasicTest() {
         try {
@@ -64,7 +64,7 @@ public class EmailTestController {
         }
     }
 
-    *//**
+    /**
      * 2. JSON 방식으로 커스텀 제보 이메일 테스트
      * POST http://localhost:8080/api/email/json-test
      * Content-Type: application/json
@@ -76,7 +76,7 @@ public class EmailTestController {
      *   "reporterName": "JSON 테스터",
      *   "reporterEmail": "test@example.com"
      * }
-     *//*
+     */
     @PostMapping("/json-test")
     public ResponseEntity<Map<String, Object>> sendJsonTest(@RequestBody Map<String, String> request) {
         try {
@@ -124,7 +124,7 @@ public class EmailTestController {
         }
     }
 
-    *//**
+    /**
      * 3. 파일 첨부 테스트 (Form 방식)
      * POST http://localhost:8080/api/email/file-test
      * Content-Type: multipart/form-data
@@ -133,7 +133,7 @@ public class EmailTestController {
      * - content: 제보 내용
      * - reporterName: 제보자 이름
      * - file: 첨부 파일 (선택사항)
-     *//*
+     */
     @PostMapping("/file-test")
     public ResponseEntity<Map<String, Object>> sendFileTest(
             @RequestParam("title") String title,
@@ -192,10 +192,10 @@ public class EmailTestController {
         }
     }
 
-    *//**
+    /**
      * 4. 실제 제보 상황 시뮬레이션 테스트
      * GET http://localhost:8080/api/email/realistic-test
-     *//*
+     */
     @GetMapping("/realistic-test")
     public ResponseEntity<Map<String, Object>> sendRealisticTest() {
         try {
@@ -242,12 +242,12 @@ public class EmailTestController {
         }
     }
 
-    *//**
+    /**
      * 파일 크기 포맷팅 헬퍼 메서드
-     *//*
+     */
     private String formatFileSize(long size) {
         if (size < 1024) return size + " bytes";
         if (size < 1024 * 1024) return String.format("%.1f KB", size / 1024.0);
         return String.format("%.1f MB", size / (1024.0 * 1024.0));
-    }*/
+    }
 }

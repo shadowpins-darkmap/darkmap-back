@@ -1,5 +1,6 @@
 package com.sp.community.controller;
 
+import com.sp.common.mail.service.EmailService;
 import com.sp.community.model.dto.BoardReportCreateDTO;
 import com.sp.community.model.vo.BoardReportVO;
 import com.sp.community.model.response.CommonApiResponse;
@@ -31,6 +32,7 @@ import java.util.Map;
 public class BoardReportController {
 
     private final BoardReportService boardReportService;
+    private final EmailService emailService;
 
     /**
      * 게시글 신고 생성
@@ -80,6 +82,15 @@ public class BoardReportController {
                     boardId, reportType, userId, attachmentFile != null && !attachmentFile.isEmpty());
 
             BoardReportVO reportVO = boardReportService.createReport(createDTO);
+
+            // 첨부파일 처리 후 이메일 발송
+            try {
+                emailService.sendBoardReportEmail(boardId, createDTO, reportVO);
+            } catch (Exception emailEx) {
+                // 이메일 발송 실패해도 신고 접수는 성공으로 처리
+                log.warn("게시글 신고 이메일 발송 실패 (신고 접수는 성공): boardId={}, error={}",
+                        boardId, emailEx.getMessage());
+            }
 
             return ResponseEntity.status(HttpStatus.CREATED).body(
                     CommonApiResponse.<BoardReportVO>builder()
