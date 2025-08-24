@@ -1,13 +1,13 @@
 package com.sp.community.model.vo;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
-import com.sp.community.persistent.entity.BoardReportEntity;
+import com.sp.community.persistent.entity.CommentReportEntity;
 import lombok.*;
 
 import java.time.LocalDateTime;
 
 /**
- * 게시글 신고 응답 VO
+ * 댓글 신고 응답 VO
  */
 @Getter
 @Setter
@@ -15,12 +15,32 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Builder
 @ToString
-public class BoardReportVO {
+public class CommentReportVO {
 
     /**
      * 신고 ID
      */
     private Long reportId;
+
+    /**
+     * 댓글 ID
+     */
+    private Long commentId;
+
+    /**
+     * 댓글 내용 (미리보기)
+     */
+    private String commentContent;
+
+    /**
+     * 댓글 작성자 ID
+     */
+    private String commentAuthorId;
+
+    /**
+     * 댓글 작성자 닉네임
+     */
+    private String commentAuthorNickname;
 
     /**
      * 게시글 ID
@@ -33,11 +53,6 @@ public class BoardReportVO {
     private String boardTitle;
 
     /**
-     * 게시글 작성자 닉네임
-     */
-    private String boardAuthorNickname;
-
-    /**
      * 신고자 ID
      */
     private String reporterId;
@@ -45,7 +60,7 @@ public class BoardReportVO {
     /**
      * 신고 분류
      */
-    private BoardReportEntity.ReportType reportType;
+    private CommentReportEntity.ReportType reportType;
 
     /**
      * 신고 분류 설명
@@ -60,7 +75,7 @@ public class BoardReportVO {
     /**
      * 신고 상태
      */
-    private BoardReportEntity.ReportStatus status;
+    private CommentReportEntity.ReportStatus status;
 
     /**
      * 신고 상태 설명
@@ -109,43 +124,43 @@ public class BoardReportVO {
      * 신고 처리 완료 여부
      */
     public boolean isProcessed() {
-        return status == BoardReportEntity.ReportStatus.APPROVED ||
-                status == BoardReportEntity.ReportStatus.REJECTED ||
-                status == BoardReportEntity.ReportStatus.CANCELLED;
+        return status == CommentReportEntity.ReportStatus.APPROVED ||
+                status == CommentReportEntity.ReportStatus.REJECTED ||
+                status == CommentReportEntity.ReportStatus.CANCELLED;
     }
 
     /**
      * 신고 처리 대기 중인지 확인
      */
     public boolean isPending() {
-        return status == BoardReportEntity.ReportStatus.PENDING;
+        return status == CommentReportEntity.ReportStatus.PENDING;
     }
 
     /**
      * 신고 검토 중인지 확인
      */
     public boolean isReviewing() {
-        return status == BoardReportEntity.ReportStatus.REVIEWING;
+        return status == CommentReportEntity.ReportStatus.REVIEWING;
     }
 
     /**
      * 승인된 신고인지 확인
      */
     public boolean isApproved() {
-        return status == BoardReportEntity.ReportStatus.APPROVED;
+        return status == CommentReportEntity.ReportStatus.APPROVED;
     }
 
     /**
      * 거부된 신고인지 확인
      */
     public boolean isRejected() {
-        return status == BoardReportEntity.ReportStatus.REJECTED;
+        return status == CommentReportEntity.ReportStatus.REJECTED;
     }
 
     /**
      * 취소된 신고인지 확인
      */
     public boolean isCancelled() {
-        return status == BoardReportEntity.ReportStatus.CANCELLED;
+        return status == CommentReportEntity.ReportStatus.CANCELLED;
     }
 }

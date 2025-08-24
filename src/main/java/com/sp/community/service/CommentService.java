@@ -1,5 +1,7 @@
 package com.sp.community.service;
 
+import com.sp.common.mail.model.dto.CommentReportInfoDto;
+import com.sp.community.model.vo.BoardVO;
 import com.sp.exception.BoardNotFoundException;
 import com.sp.exception.CommentNotFoundException;
 import com.sp.exception.UnauthorizedException;
@@ -39,6 +41,7 @@ public class CommentService {
     private final BoardRepository boardRepository;
     private final CommentLikeRepository commentLikeRepository;
     private final MemberRepository memberRepository;
+    private final BoardService boardService;
 
     /**
      * 댓글 생성
@@ -313,6 +316,83 @@ public class CommentService {
         return commentRepository.countByAuthorIdAndNotDeleted(memberId+"");
     }
 
+    /**
+     * 댓글 존재 여부 확인
+     */
+    public Optional<CommentEntity> findComment(Long commentId) {
+        return commentRepository.findById(commentId);
+    }
+
+    /**
+     * 댓글 VO 조회 (기존 메서드 활용)
+     * 실제 구현에서는 기존에 있는 메서드를 사용하세요
+     */
+    private Optional<CommentVO> getCommentById(Long commentId) {
+        return commentRepository.findByCommentId(commentId);
+    }
+    /**
+     * 댓글 신고용 정보 조회 (VO 기반)
+     * CommentVO와 BoardVO를 조합해서 신고에 필요한 정보를 DTO로 반환
+     */
+    public Optional<CommentReportInfoDto> getCommentReportInfo(Long commentId) {
+        try {
+            // 1. 댓글 VO 조회
+            Optional<CommentVO> commentVOOpt = getCommentById(commentId);
+            if (commentVOOpt.isEmpty()) {
+                log.warn("댓글을 찾을 수 없습니다: commentId={}", commentId);
+                return Optional.empty();
+            }
+
+            CommentVO commentVO = commentVOOpt.get();
+
+            // 2. 게시글 VO 조회
+            BoardVO boardVO = null;
+            try {
+                Optional<BoardVO> boardVOOpt = boardService.getBoardById(commentVO.getBoardId());
+                boardVO = boardVOOpt.orElse(null);
+            } catch (Exception e) {
+                log.warn("게시글 정보 조회 실패: boardId={}", commentVO.getBoardId(), e);
+            }
+
+            // 3. DTO 생성
+            CommentReportInfoDto.CommentReportInfoDtoBuilder builder = CommentReportInfoDto.builder()
+                    // 댓글 정보
+                    .commentId(commentVO.getCommentId())
+                    .boardId(commentVO.getBoardId())
+                    .commentContent(commentVO.getContent())
+                    .commentAuthorId(commentVO.getAuthorId())
+                    .commentAuthorNickname(commentVO.getAuthorNickname())
+                    .commentCreatedAt(commentVO.getCreatedAt())
+                    .isCommentReported(commentVO.getIsReported())
+                    .commentStatus(commentVO.getStatus());
+
+            // 4. 게시글 정보 추가 (있는 경우)
+            if (boardVO != null) {
+                builder
+                        .boardTitle(boardVO.getTitle())
+                        .boardCategory(boardVO.getCategory())
+                        .boardAuthorNickname(boardVO.getAuthorNickname())
+                        .reportType(boardVO.getReportType())
+                        .reportLocation(boardVO.getReportLocation())
+                        .isBoardReported(boardVO.getIsReported())
+                        .boardStatus(boardVO.getStatus());
+            } else {
+                // 게시글 정보가 없는 경우 기본값 설정
+                builder
+                        .boardTitle("게시글 정보 없음")
+                        .boardCategory("UNKNOWN")
+                        .boardAuthorNickname("알 수 없음")
+                        .isBoardReported(false)
+                        .boardStatus(BoardVO.BoardStatus.ACTIVE);
+            }
+
+            return Optional.of(builder.build());
+
+        } catch (Exception e) {
+            log.error("댓글 신고 정보 조회 중 오류 발생: commentId={}", commentId, e);
+            return Optional.empty();
+        }
+    }
 
     /**
      * 댓글 존재 여부 확인
