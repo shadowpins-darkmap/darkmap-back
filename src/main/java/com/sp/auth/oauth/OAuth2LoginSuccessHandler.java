@@ -89,7 +89,8 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
 
         // 프론트엔드로 리다이렉트 (우리 JWT 토큰 전달)
         //String redirectUrl = "https://kdark.weareshadowpins.co.kr/social-redirect-google?success=true&token=" + accessToken;
-        String redirectUrl = "https://darkmap-pi.vercel.app/social-redirect-google?success=true&token=" + accessToken;
+        //String redirectUrl = "https://darkmap-pi.vercel.app/social-redirect-google?success=true&token=" + accessToken;
+        String redirectUrl = "/social-redirect-google?success=true&token=" + accessToken;
         response.sendRedirect(redirectUrl);
     }
 }
