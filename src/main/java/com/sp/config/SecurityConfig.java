@@ -67,6 +67,7 @@ public class SecurityConfig {
         config.setAllowedOrigins(List.of(
                 "https://kdark.weareshadowpins.com",
                 "https://darkmap-pi.vercel.app",
+                "https://api.kdark.weareshadowpins.com",
                 "http://localhost:3000",
                 "http://localhost:8080" // 추가: 로컬 백엔드 테스트용
         ));
