@@ -9,7 +9,6 @@ import com.sp.token.service.GoogleTokenService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseCookie;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClient;
@@ -21,7 +20,6 @@ import org.springframework.stereotype.Component;
 import java.io.IOException;
 import java.time.Duration;
 import java.time.LocalDateTime;
-
 @Component
 @RequiredArgsConstructor
 public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
@@ -31,14 +29,6 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
     private final RefreshTokenService refreshTokenService;
     private final OAuth2AuthorizedClientService authorizedClientService;
     private final GoogleTokenService googleTokenService;
-
-    // application.properties에서 프론트엔드 URL 설정
-    @Value("${frontend.base-url}")
-    private String frontendBaseUrl;
-
-    // application.properties에서 쿠키 도메인 설정
-    @Value("${cookie.domain}")
-    private String cookieDomain;
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request,
@@ -64,7 +54,6 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
                 googleRefreshToken = authorizedClient.getRefreshToken().getTokenValue();
             }
 
-            // 구글 토큰들을 별도 테이블에 저장
             googleTokenService.saveTokens(
                     member.getId(),
                     googleAccessToken,
@@ -73,26 +62,28 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
             );
         }
 
-        // 우리 시스템의 JWT 토큰 생성
+        // JWT 토큰 생성
         String accessToken = jwtTokenProvider.createAccessToken(member.getId(), member.getLevel());
         String refreshToken = jwtTokenProvider.createRefreshToken(member.getId());
 
-        // Refresh Token을 DB에 저장
         refreshTokenService.save(
                 member.getId(),
                 refreshToken,
                 LocalDateTime.now().plusDays(7)
         );
 
-        // 환경에 따른 쿠키 설정
+        // 동적으로 환경 판단
+        String frontendUrl = determineFrontendUrl(request);
+        String cookieDomain = determineCookieDomain(request);
+
+        // 쿠키 설정
         ResponseCookie.ResponseCookieBuilder cookieBuilder = ResponseCookie.from("refresh_token", refreshToken)
                 .httpOnly(true)
-                .secure(!cookieDomain.equals("localhost")) // localhost일 때는 secure false
+                .secure(!cookieDomain.equals("localhost"))
                 .path("/")
                 .sameSite("None")
                 .maxAge(Duration.ofDays(7));
 
-        // localhost가 아닌 경우에만 domain 설정
         if (!cookieDomain.equals("localhost")) {
             cookieBuilder.domain(cookieDomain);
         }
@@ -100,8 +91,56 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
         ResponseCookie refreshCookie = cookieBuilder.build();
         response.addHeader("Set-Cookie", refreshCookie.toString());
 
-        // 환경별 동적 리다이렉트 URL
-        String redirectUrl = frontendBaseUrl + "/social-redirect-google?success=true&token=" + accessToken;
+        // 동적 리다이렉트
+        String redirectUrl = frontendUrl + "/social-redirect-google?success=true&token=" + accessToken;
         response.sendRedirect(redirectUrl);
+    }
+
+    private String determineFrontendUrl(HttpServletRequest request) {
+        String host = request.getHeader("Host");
+        String referer = request.getHeader("Referer");
+        String origin = request.getHeader("Origin");
+
+        // 1. Referer 헤더에서 판단 (OAuth 시작점)
+        if (referer != null) {
+            if (referer.contains("localhost")) {
+                return "http://localhost:3000";
+            } else if (referer.contains("darkmap-pi.vercel.app")) {
+                return "https://darkmap-pi.vercel.app";
+            } else if (referer.contains("kdark.weareshadowpins.co.kr")) {
+                return "https://kdark.weareshadowpins.co.kr";
+            }
+        }
+
+        // 2. Origin 헤더에서 판단
+        if (origin != null) {
+            if (origin.contains("localhost")) {
+                return "http://localhost:3000";
+            } else if (origin.contains("darkmap-pi.vercel.app")) {
+                return "https://darkmap-pi.vercel.app";
+            } else if (origin.contains("kdark.weareshadowpins.co.kr")) {
+                return "https://kdark.weareshadowpins.co.kr";
+            }
+        }
+
+        // 3. Host 헤더에서 판단 (API 서버 기준)
+        if (host != null) {
+            if (host.contains("localhost")) {
+                return "http://localhost:3000";
+            }
+        }
+
+        // 4. 기본값 (운영환경)
+        return "https://kdark.weareshadowpins.co.kr";
+    }
+
+    private String determineCookieDomain(HttpServletRequest request) {
+        String host = request.getHeader("Host");
+
+        if (host != null && host.contains("localhost")) {
+            return "localhost";
+        }
+
+        return "api.kdark.weareshadowpins.com";
     }
 }

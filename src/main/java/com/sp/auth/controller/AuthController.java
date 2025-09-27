@@ -15,7 +15,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
@@ -40,14 +39,6 @@ public class AuthController {
     private final JwtTokenProvider jwtTokenProvider;
     private final TokenBlacklistService tokenBlacklistService;
 
-    // application.properties에서 프론트엔드 URL 설정
-    @Value("${frontend.base-url}")
-    private String frontendBaseUrl;
-
-    // application.properties에서 쿠키 도메인 설정
-    @Value("${cookie.domain}")
-    private String cookieDomain;
-
     @GetMapping("/login/kakao")
     public void redirectToKakao(HttpServletResponse response) throws IOException {
         String redirectUrl = authService.getKakaoAuthorizeUrl();
@@ -55,9 +46,11 @@ public class AuthController {
     }
 
     @GetMapping("/login/kakao/callback")
-    public void kakaoCallback(@RequestParam String code, HttpServletResponse response) throws IOException {
+    public void kakaoCallback(@RequestParam String code,
+                              HttpServletRequest request,
+                              HttpServletResponse response) throws IOException {
         AuthResponse authResponse = authService.loginWithKakao(code);
-        setTokensAndRedirect(authResponse, response);
+        setTokensAndRedirect(authResponse, response, request);
     }
 
     @DeleteMapping("/withdraw/kakao")
@@ -88,7 +81,7 @@ public class AuthController {
             refreshTokenService.deleteByMemberId(id);
 
             // 쿠키 삭제
-            clearTokenCookies(response);
+            clearTokenCookies(response, null); // request가 없으므로 기본값 사용
 
             return ResponseEntity.ok().body(Map.of("message", "카카오 탈퇴가 완료되었습니다."));
 
@@ -129,7 +122,7 @@ public class AuthController {
             refreshTokenService.deleteByMemberId(id);
 
             // 쿠키 삭제
-            clearTokenCookies(response);
+            clearTokenCookies(response, httpRequest);
 
             return ResponseEntity.ok().body(Map.of("message", "구글 탈퇴가 완료되었습니다."));
 
@@ -161,13 +154,14 @@ public class AuthController {
 
     @PostMapping("/logout")
     public ResponseEntity<?> logout(@AuthenticationPrincipal Long id,
+                                    HttpServletRequest request,
                                     HttpServletResponse response) {
         try {
             // Refresh Token 삭제
             refreshTokenService.deleteByMemberId(id);
 
             // 쿠키 삭제
-            clearTokenCookies(response);
+            clearTokenCookies(response, request);
 
             return ResponseEntity.ok().body(Map.of("message", "로그아웃이 완료되었습니다."));
 
@@ -216,7 +210,10 @@ public class AuthController {
         }
     }
 
-    private void setTokensAndRedirect(AuthResponse authResponse, HttpServletResponse response) throws IOException {
+    private void setTokensAndRedirect(AuthResponse authResponse, HttpServletResponse response, HttpServletRequest request) throws IOException {
+        // 동적으로 쿠키 도메인 결정
+        String cookieDomain = determineCookieDomain(request);
+
         // Refresh Token을 환경에 맞는 쿠키에 저장
         String refreshToken = authResponse.getRefreshToken();
         if (refreshToken != null) {
@@ -236,17 +233,16 @@ public class AuthController {
             response.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
         }
 
-        // 환경별 프론트엔드로 리다이렉트
-        String redirectUrl = buildTokenRedirectUrl(authResponse.getJwtToken());
+        // 동적으로 프론트엔드 URL 결정하여 리다이렉트
+        String frontendUrl = determineFrontendUrl(request);
+        String redirectUrl = frontendUrl + "/social-redirect-kakao?success=true&token=" + authResponse.getJwtToken();
         response.sendRedirect(redirectUrl);
     }
 
-    private String buildTokenRedirectUrl(String accessToken) {
-        // 환경에 맞는 프론트엔드 URL로 리다이렉트
-        return frontendBaseUrl + "/social-redirect-kakao?success=true&token=" + accessToken;
-    }
+    private void clearTokenCookies(HttpServletResponse response, HttpServletRequest request) {
+        // request가 null인 경우 기본값 사용
+        String cookieDomain = (request != null) ? determineCookieDomain(request) : "api.kdark.weareshadowpins.com";
 
-    private void clearTokenCookies(HttpServletResponse response) {
         ResponseCookie.ResponseCookieBuilder cookieBuilder = ResponseCookie.from("refresh_token", "")
                 .path("/")
                 .maxAge(0)
@@ -273,5 +269,55 @@ public class AuthController {
                     .orElse(null);
         }
         return null;
+    }
+
+    // 동적으로 프론트엔드 URL 결정
+    private String determineFrontendUrl(HttpServletRequest request) {
+        String host = request.getHeader("Host");
+        String referer = request.getHeader("Referer");
+        String origin = request.getHeader("Origin");
+
+        // 1. Referer 헤더에서 판단 (OAuth 시작점)
+        if (referer != null) {
+            if (referer.contains("localhost")) {
+                return "http://localhost:3000";
+            } else if (referer.contains("darkmap-pi.vercel.app")) {
+                return "https://darkmap-pi.vercel.app";
+            } else if (referer.contains("kdark.weareshadowpins.co.kr")) {
+                return "https://kdark.weareshadowpins.co.kr";
+            }
+        }
+
+        // 2. Origin 헤더에서 판단
+        if (origin != null) {
+            if (origin.contains("localhost")) {
+                return "http://localhost:3000";
+            } else if (origin.contains("darkmap-pi.vercel.app")) {
+                return "https://darkmap-pi.vercel.app";
+            } else if (origin.contains("kdark.weareshadowpins.co.kr")) {
+                return "https://kdark.weareshadowpins.co.kr";
+            }
+        }
+
+        // 3. Host 헤더에서 판단 (API 서버 기준)
+        if (host != null) {
+            if (host.contains("localhost")) {
+                return "http://localhost:3000";
+            }
+        }
+
+        // 4. 기본값 (운영환경)
+        return "https://kdark.weareshadowpins.co.kr";
+    }
+
+    // 동적으로 쿠키 도메인 결정
+    private String determineCookieDomain(HttpServletRequest request) {
+        String host = request.getHeader("Host");
+
+        if (host != null && host.contains("localhost")) {
+            return "localhost";
+        }
+
+        return "api.kdark.weareshadowpins.com";
     }
 }
