@@ -23,11 +23,13 @@ public class SwaggerConfig {
     @Bean
     public OpenAPI customOpenAPI() {
         List<Server> servers = new ArrayList<>();
-        
+
+        // 환경변수나 프로퍼티에서 가져온 서버 URL 추가
         servers.add(new Server()
                 .url(serverBaseUrl)
                 .description("Current Server"));
-        
+
+        // 개발용 로컬 서버는 항상 포함
         if (!serverBaseUrl.equals("http://localhost:8080")) {
             servers.add(new Server()
                     .url("http://localhost:8080")
