@@ -9,6 +9,7 @@ import com.sp.token.service.GoogleTokenService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseCookie;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClient;
@@ -30,6 +31,14 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
     private final RefreshTokenService refreshTokenService;
     private final OAuth2AuthorizedClientService authorizedClientService;
     private final GoogleTokenService googleTokenService;
+
+    // application.properties에서 프론트엔드 URL 설정
+    @Value("${frontend.base-url}")
+    private String frontendBaseUrl;
+
+    // application.properties에서 쿠키 도메인 설정
+    @Value("${cookie.domain}")
+    private String cookieDomain;
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request,
@@ -64,7 +73,7 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
             );
         }
 
-        // 우리 시스템의 JWT 토큰 생성 (기존과 동일)
+        // 우리 시스템의 JWT 토큰 생성
         String accessToken = jwtTokenProvider.createAccessToken(member.getId(), member.getLevel());
         String refreshToken = jwtTokenProvider.createRefreshToken(member.getId());
 
@@ -75,22 +84,24 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
                 LocalDateTime.now().plusDays(7)
         );
 
-        // Refresh Token을 쿠키에 저장 (기존과 동일)
-        ResponseCookie refreshCookie = ResponseCookie.from("refresh_token", refreshToken)
+        // 환경에 따른 쿠키 설정
+        ResponseCookie.ResponseCookieBuilder cookieBuilder = ResponseCookie.from("refresh_token", refreshToken)
                 .httpOnly(true)
-                .secure(true)
+                .secure(!cookieDomain.equals("localhost")) // localhost일 때는 secure false
                 .path("/")
-                .domain("api.kdark.weareshadowpins.com")
                 .sameSite("None")
-                .maxAge(Duration.ofDays(7))
-                .build();
+                .maxAge(Duration.ofDays(7));
 
+        // localhost가 아닌 경우에만 domain 설정
+        if (!cookieDomain.equals("localhost")) {
+            cookieBuilder.domain(cookieDomain);
+        }
+
+        ResponseCookie refreshCookie = cookieBuilder.build();
         response.addHeader("Set-Cookie", refreshCookie.toString());
 
-        // 프론트엔드로 리다이렉트 (우리 JWT 토큰 전달)
-        //String redirectUrl = "https://kdark.weareshadowpins.co.kr/social-redirect-google?success=true&token=" + accessToken;
-        //String redirectUrl = "https://darkmap-pi.vercel.app/social-redirect-google?success=true&token=" + accessToken;
-        String redirectUrl = "/social-redirect-google?success=true&token=" + accessToken;
+        // 환경별 동적 리다이렉트 URL
+        String redirectUrl = frontendBaseUrl + "/social-redirect-google?success=true&token=" + accessToken;
         response.sendRedirect(redirectUrl);
     }
 }

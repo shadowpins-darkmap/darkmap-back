@@ -15,6 +15,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
@@ -38,6 +39,14 @@ public class AuthController {
     private final RefreshTokenService refreshTokenService;
     private final JwtTokenProvider jwtTokenProvider;
     private final TokenBlacklistService tokenBlacklistService;
+
+    // application.properties에서 프론트엔드 URL 설정
+    @Value("${frontend.base-url}")
+    private String frontendBaseUrl;
+
+    // application.properties에서 쿠키 도메인 설정
+    @Value("${cookie.domain}")
+    private String cookieDomain;
 
     @GetMapping("/login/kakao")
     public void redirectToKakao(HttpServletResponse response) throws IOException {
@@ -208,42 +217,49 @@ public class AuthController {
     }
 
     private void setTokensAndRedirect(AuthResponse authResponse, HttpServletResponse response) throws IOException {
-        // Refresh Token을 API 서버 도메인의 쿠키에 저장
+        // Refresh Token을 환경에 맞는 쿠키에 저장
         String refreshToken = authResponse.getRefreshToken();
         if (refreshToken != null) {
-            ResponseCookie refreshCookie = ResponseCookie.from("refresh_token", refreshToken)
+            ResponseCookie.ResponseCookieBuilder cookieBuilder = ResponseCookie.from("refresh_token", refreshToken)
                     .httpOnly(true)
-                    .secure(true)
+                    .secure(!cookieDomain.equals("localhost")) // localhost일 때는 secure false
                     .path("/")
-                    .domain("api.kdark.weareshadowpins.com") // API 서버 도메인 명시
                     .sameSite("None")
-                    .maxAge(Duration.ofDays(7))
-                    .build();
+                    .maxAge(Duration.ofDays(7));
+
+            // localhost가 아닌 경우에만 domain 설정
+            if (!cookieDomain.equals("localhost")) {
+                cookieBuilder.domain(cookieDomain);
+            }
+
+            ResponseCookie refreshCookie = cookieBuilder.build();
             response.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
         }
 
-        // 프론트엔드로 리다이렉트
+        // 환경별 프론트엔드로 리다이렉트
         String redirectUrl = buildTokenRedirectUrl(authResponse.getJwtToken());
         response.sendRedirect(redirectUrl);
     }
 
     private String buildTokenRedirectUrl(String accessToken) {
-        // 임시
-        return "/social-redirect-kakao?success=true&token=" + accessToken;
-        //return "https://darkmap-pi.vercel.app/social-redirect-kakao?success=true&token=" + accessToken;
-        //return "https://kdark.weareshadowpins.com/social-redirect-kakao?success=true&token=" + accessToken;
-        //return "https://localhost:8080?success=true&token=" + accessToken;
+        // 환경에 맞는 프론트엔드 URL로 리다이렉트
+        return frontendBaseUrl + "/social-redirect-kakao?success=true&token=" + accessToken;
     }
 
     private void clearTokenCookies(HttpServletResponse response) {
-        ResponseCookie clearRefreshCookie = ResponseCookie.from("refresh_token", "")
+        ResponseCookie.ResponseCookieBuilder cookieBuilder = ResponseCookie.from("refresh_token", "")
                 .path("/")
-                .domain("api.kdark.weareshadowpins.com")
                 .maxAge(0)
                 .httpOnly(true)
-                .secure(true)
-                .sameSite("None")
-                .build();
+                .secure(!cookieDomain.equals("localhost")) // localhost일 때는 secure false
+                .sameSite("None");
+
+        // localhost가 아닌 경우에만 domain 설정
+        if (!cookieDomain.equals("localhost")) {
+            cookieBuilder.domain(cookieDomain);
+        }
+
+        ResponseCookie clearRefreshCookie = cookieBuilder.build();
         response.addHeader(HttpHeaders.SET_COOKIE, clearRefreshCookie.toString());
     }
 
