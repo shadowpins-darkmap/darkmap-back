@@ -7,35 +7,16 @@ import io.swagger.v3.oas.models.servers.Server;
 import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
 import io.swagger.v3.oas.models.Components;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @Configuration
 public class SwaggerConfig {
 
-    @Value("${server.base-url:http://localhost:8080}")
-    private String serverBaseUrl;
-
     @Bean
     public OpenAPI customOpenAPI() {
-        List<Server> servers = new ArrayList<>();
-
-        // 환경변수나 프로퍼티에서 가져온 서버 URL 추가
-        servers.add(new Server()
-                .url(serverBaseUrl)
-                .description("Current Server"));
-
-        // 개발용 로컬 서버는 항상 포함
-        if (!serverBaseUrl.equals("http://localhost:8080")) {
-            servers.add(new Server()
-                    .url("http://localhost:8080")
-                    .description("Local Development Server"));
-        }
-
         return new OpenAPI()
                 .info(new Info()
                         .title("Community Board API")
@@ -44,7 +25,14 @@ public class SwaggerConfig {
                         .license(new License()
                                 .name("Apache 2.0")
                                 .url("http://springdoc.org")))
-                .servers(servers)
+                .servers(List.of(
+                        new Server()
+                                .url("https://api.kdark.weareshadowpins.com")
+                                .description("Production Server"),
+                        new Server()
+                                .url("http://localhost:8080")
+                                .description("Local Development Server")
+                ))
                 .components(new Components()
                         .addSecuritySchemes("bearerAuth",
                                 new SecurityScheme()
