@@ -1,5 +1,7 @@
 package com.sp.community.model.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -42,66 +44,53 @@ public class BoardCreateDTO {
     /**
      * 작성자 ID
      */
+    @Schema(hidden = true)
     @Size(max = 50, message = "")
     private String authorId;
 
-    /**
-     * 작성자 닉네임
-     */
+
+    @Schema(description = "작성자 닉네임", example = "사용자123")
     @Size(max = 50, message = "")
     private String authorNickname;
 
-    /**
-     * 첨부 이미지 파일 (한 개만 가능)
-     */
+    @Schema(description = "첨부 이미지 파일")
     private MultipartFile imageFile;
 
-    /**
-     * 게시글 카테고리 (선택사항)
-     */
+    @Schema(description = "게시글 카테고리", example = "GENERAL")
     @Size(max = 50, message = "카테고리는 50자 이하로 입력해주세요.")
     private String category;
 
-    /**
-     * 게시글 태그 (선택사항)
-     */
+    @Schema(description = "게시글 태그", example = "[\"태그1\", \"태그2\"]")
     private List<String> tags;
 
-    /**
-     * 공지사항 여부 (관리자용)
-     */
+    @Schema(description = "공지사항 여부", example = "false")
     @Builder.Default
     private Boolean isNotice = false;
 
-    /**
-     * 임시저장 여부
-     */
+    @Schema(description = "임시저장 여부", example = "false")
     @Builder.Default
     private Boolean isDraft = false;
 
-    /**
-     * 댓글 허용 여부
-     */
+    @Schema(description = "댓글 허용 여부", example = "true")
     @Builder.Default
     private Boolean allowComments = true;
 
-    /**
-     * 제보 유형 (INCIDENTREPORT 카테고리일 때만 사용)
-     */
+    @Schema(description = "제보 유형")
     @Size(max = 50, message = "제보 유형은 50자 이하로 입력해주세요.")
     private String reportType;
 
-    /**
-     * 제보 위치 (INCIDENTREPORT 카테고리일 때만 사용)
-     */
+    @Schema(description = "제보 위치")
     @Size(max = 50, message = "제보 위치는 50자 이하로 입력해주세요.")
     private String reportLocation;
+
 
     // ============ 이미지 파일 관련 메서드 ============
 
     /**
      * 이미지 파일 첨부 여부 확인
      */
+    @JsonIgnore
+    @Schema(hidden = true)
     public boolean hasImage() {
         return imageFile != null && !imageFile.isEmpty();
     }
@@ -109,6 +98,8 @@ public class BoardCreateDTO {
     /**
      * 이미지 파일 반환
      */
+    @JsonIgnore
+    @Schema(hidden = true)
     public MultipartFile getImageFile() {
         return imageFile;
     }
@@ -116,6 +107,8 @@ public class BoardCreateDTO {
     /**
      * 이미지 파일 유효성 확인
      */
+    @JsonIgnore
+    @Schema(hidden = true)
     public boolean isValidImageFile() {
         if (!hasImage()) {
             return false;
@@ -147,6 +140,8 @@ public class BoardCreateDTO {
     /**
      * 이미지 파일 정보 요약
      */
+    @JsonIgnore
+    @Schema(hidden = true)
     public String getImageFileInfo() {
         if (!hasImage()) {
             return "첨부된 이미지 없음";
@@ -163,6 +158,8 @@ public class BoardCreateDTO {
     /**
      * 내용 미리보기 (최대 100자)
      */
+    @JsonIgnore
+    @Schema(hidden = true)
     public String getContentPreview() {
         if (content == null || content.trim().isEmpty()) {
             return "";
@@ -179,6 +176,8 @@ public class BoardCreateDTO {
     /**
      * 제목 정리 (앞뒤 공백 제거)
      */
+    @JsonIgnore
+    @Schema(hidden = true)
     public String getTrimmedTitle() {
         return title != null ? title.trim() : "";
     }
@@ -186,6 +185,8 @@ public class BoardCreateDTO {
     /**
      * 내용 정리 (앞뒤 공백 제거)
      */
+    @JsonIgnore
+    @Schema(hidden = true)
     public String getTrimmedContent() {
         return content != null ? content.trim() : "";
     }
@@ -193,6 +194,8 @@ public class BoardCreateDTO {
     /**
      * 카테고리 정리 (앞뒤 공백 제거, 소문자 변환)
      */
+    @JsonIgnore
+    @Schema(hidden = true)
     public String getNormalizedCategory() {
         if (category == null || category.trim().isEmpty()) {
             return null;
@@ -203,6 +206,8 @@ public class BoardCreateDTO {
     /**
      * 태그 정리 (공백 제거, 중복 제거, 소문자 변환)
      */
+    @JsonIgnore
+    @Schema(hidden = true)
     public List<String> getNormalizedTags() {
         if (tags == null || tags.isEmpty()) {
             return List.of();
@@ -218,21 +223,28 @@ public class BoardCreateDTO {
     /**
      * 파일 확장자 추출
      */
+    @JsonIgnore
+    @Schema(hidden = true)
     private String getFileExtension(String filename) {
         if (filename == null || !filename.contains(".")) {
             return "";
         }
         return filename.substring(filename.lastIndexOf(".") + 1);
     }
-
+    @JsonIgnore
+    @Schema(hidden = true)
     public String getTrimmedReportType() {
         return reportType != null ? reportType.trim() : null;
     }
 
+    @JsonIgnore
+    @Schema(hidden = true)
     public String getTrimmedReportLocation() {
         return reportLocation != null ? reportLocation.trim() : null;
     }
 
+    @JsonIgnore
+    @Schema(hidden = true)
     public boolean isIncidentReportCategory() {
         return "INCIDENTREPORT".equals(getNormalizedCategory());
     }
@@ -242,6 +254,8 @@ public class BoardCreateDTO {
     /**
      * DTO 검증
      */
+    @JsonIgnore
+    @Schema(hidden = true)
     public void validate() {
         // 기본 필드 검증 (Bean Validation이 처리)
 
@@ -289,6 +303,8 @@ public class BoardCreateDTO {
     /**
      * 공지사항 등록 권한 검증 (기본 구현)
      */
+    @JsonIgnore
+    @Schema(hidden = true)
     private void validateNoticePermission() {
         // 실제 구현에서는 사용자의 권한을 확인해야 함
         // 여기서는 기본적인 검증만 수행
@@ -308,6 +324,8 @@ public class BoardCreateDTO {
     /**
      * DTO 요약 정보 (로깅용)
      */
+    @JsonIgnore
+    @Schema(hidden = true)
     public String getSummary() {
         return String.format("BoardCreateDTO{title='%s', authorId='%s', category='%s', hasImage=%s, isNotice=%s}",
                 getTrimmedTitle(),
@@ -320,6 +338,8 @@ public class BoardCreateDTO {
     /**
      * 첨부 파일 포함 여부를 문자열로 반환
      */
+    @JsonIgnore
+    @Schema(hidden = true)
     public String getAttachmentStatus() {
         if (!hasImage()) {
             return "첨부 파일 없음";
@@ -332,6 +352,8 @@ public class BoardCreateDTO {
     /**
      * @deprecated 이미지 한 개만 지원하므로 hasImage() 사용 권장
      */
+    @JsonIgnore
+    @Schema(hidden = true)
     @Deprecated
     public boolean hasFiles() {
         return hasImage();
@@ -340,6 +362,8 @@ public class BoardCreateDTO {
     /**
      * @deprecated 이미지 한 개만 지원하므로 getImageFile() 사용 권장
      */
+    @JsonIgnore
+    @Schema(hidden = true)
     @Deprecated
     public List<MultipartFile> getValidFiles() {
         if (hasImage()) {
