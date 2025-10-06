@@ -6,6 +6,7 @@ import com.sp.auth.oauth.OAuth2LoginSuccessHandler;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -16,6 +17,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.util.Arrays;
 import java.util.List;
 
 @Configuration
@@ -30,25 +32,30 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                .cors(cors -> cors.configurationSource(corsConfigurationSource())) // 수정: 명시적으로 설정
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
+                        // Swagger 관련 (인증 없이 접근)
+                        .requestMatchers("/swagger-ui/**", "/swagger-ui.html").permitAll()
+                        .requestMatchers("/v3/api-docs/**", "/api-docs/**").permitAll()
+                        .requestMatchers("/swagger-resources/**").permitAll()
+                        .requestMatchers("/webjars/**").permitAll()
+
                         // 인증 없이 접근 가능한 엔드포인트
                         .requestMatchers("/api/v1/auth/**").permitAll()
                         .requestMatchers("/api/v1/main/**").permitAll()
-                        .requestMatchers("/oauth2/**").permitAll() // 수정: oauth2/** 패턴 추가
+                        .requestMatchers("/oauth2/**").permitAll()
                         .requestMatchers("/login/oauth2/**").permitAll()
                         .requestMatchers("/error").permitAll()
-                        .requestMatchers("/swagger-ui/**").permitAll()
-                        .requestMatchers("/v3/api-docs/**").permitAll() // 수정: OpenAPI 3.0 경로
-                        .requestMatchers("/api-docs/**").permitAll()
 
-                        // 인증이 필요한 엔드포인트 (게시판, 마이페이지 등)
+                        // 인증이 필요한 엔드포인트
                         .requestMatchers("/api/v1/boards/**").authenticated()
-                        .requestMatchers("/api/v1/members/**").authenticated() // 추가: 회원 관련
+                        .requestMatchers("/api/v1/members/**").authenticated()
 
-                        // 나머지는 허용 (홈페이지 등)
+                        // 나머지는 허용
                         .anyRequest().permitAll()
                 )
                 .oauth2Login(oauth -> oauth
@@ -64,20 +71,39 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
 
-        config.setAllowedOrigins(List.of(
+        config.setAllowedOriginPatterns(Arrays.asList(
                 "https://kdark.weareshadowpins.com",
                 "https://darkmap-pi.vercel.app",
+                "https://*.vercel.app",
                 "https://api.kdark.weareshadowpins.com",
-                "http://localhost:3000",
-                "http://localhost:8080" // 추가: 로컬 백엔드 테스트용
+                "http://localhost:*",
+                "http://127.0.0.1:*"
         ));
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
-        config.setAllowedHeaders(List.of("*"));
+
+        config.setAllowedMethods(Arrays.asList(
+                "GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH", "HEAD"
+        ));
+
+        config.setAllowedHeaders(Arrays.asList(
+                "Authorization",
+                "Content-Type",
+                "X-Requested-With",
+                "Accept",
+                "Origin",
+                "Access-Control-Request-Method",
+                "Access-Control-Request-Headers",
+                "X-CSRF-TOKEN"
+        ));
+
+        config.setExposedHeaders(Arrays.asList(
+                "Authorization",
+                "Set-Cookie",
+                "Access-Control-Allow-Origin",
+                "Access-Control-Allow-Credentials"
+        ));
+
         config.setAllowCredentials(true);
         config.setMaxAge(3600L);
-
-        // 추가: 노출할 헤더 설정 (JWT 토큰 등)
-        config.setExposedHeaders(List.of("Authorization", "Set-Cookie"));
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
