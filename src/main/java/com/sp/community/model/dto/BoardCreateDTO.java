@@ -60,18 +60,18 @@ public class BoardCreateDTO {
     @Size(max = 50, message = "카테고리는 50자 이하로 입력해주세요.")
     private String category;
 
-    @Schema(description = "게시글 태그", example = "[\"태그1\", \"태그2\"]")
+    @Schema(description = "게시글 태그", example = "[\"태그1\", \"태그2\"]", hidden = true)
     private List<String> tags;
 
-    @Schema(description = "공지사항 여부", example = "false")
+    @Schema(description = "공지사항 여부", example = "false", hidden = true)
     @Builder.Default
     private Boolean isNotice = false;
 
-    @Schema(description = "임시저장 여부", example = "false")
+    @Schema(description = "임시저장 여부", example = "false", hidden = true)
     @Builder.Default
     private Boolean isDraft = false;
 
-    @Schema(description = "댓글 허용 여부", example = "true")
+    @Schema(description = "댓글 허용 여부", example = "true", hidden = true)
     @Builder.Default
     private Boolean allowComments = true;
 
