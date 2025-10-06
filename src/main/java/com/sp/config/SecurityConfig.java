@@ -52,8 +52,8 @@ public class SecurityConfig {
                         .requestMatchers("/error").permitAll()
 
                         // 인증이 필요한 엔드포인트
-                        .requestMatchers("/api/v1/boards/**").authenticated()
-                        .requestMatchers("/api/v1/members/**").authenticated()
+                        .requestMatchers("/api/v1/boards/**").permitAll()
+                        .requestMatchers("/api/v1/members/**").permitAll()
 
                         // 나머지는 허용
                         .anyRequest().permitAll()
