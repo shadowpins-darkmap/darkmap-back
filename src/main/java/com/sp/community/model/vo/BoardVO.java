@@ -33,6 +33,11 @@ public class BoardVO {
     private String title;
 
     /**
+     * 게시글 전체 내용
+     */
+    private String content;
+
+    /**
      * 작성자 ID
      */
     private String authorId;
