@@ -49,6 +49,9 @@ public class BoardEntity {
     @Column(name = "report_location", length = 50)
     private String reportLocation; // 제보 위치 (INCIDENTREPORT 카테고리일 때만 사용)
 
+    @Column(name = "report_url", length = 255)
+    private String reportUrl; // 뉴스기사 (INCIDENTREPORT 카테고리일 때만 사용)
+
     @Builder.Default
     @Column(name = "report_approved", nullable = false, columnDefinition = "boolean default false")
     private Boolean reportApproved = false; // 제보 승인 여부 (INCIDENTREPORT 카테고리일 때만 사용)

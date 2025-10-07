@@ -139,6 +139,11 @@ public class BoardVO {
     private String reportLocation;
 
     /**
+     * 뉴스 기사 주소 (INCIDENTREPORT 카테고리인 경우)
+     */
+    private String reportUrl;
+
+    /**
      * INCIDENTREPORT 카테고리인지 확인
      */
     public boolean isIncidentReportCategory() {
@@ -151,6 +156,7 @@ public class BoardVO {
     public boolean hasCompleteReportInfo() {
         return isIncidentReportCategory() &&
                 reportType != null && !reportType.trim().isEmpty() &&
-                reportLocation != null && !reportLocation.trim().isEmpty();
+                reportLocation != null && !reportLocation.trim().isEmpty() &&
+                reportUrl != null && !reportUrl.trim().isEmpty();
     }
 }

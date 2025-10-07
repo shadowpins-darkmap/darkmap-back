@@ -417,6 +417,12 @@ public class BoardDetailVO {
      */
     private String reportLocation;
 
+    /**
+     * 뉴스 기사 주소 (INCIDENTREPORT 카테고리인 경우)
+     */
+    private String reportUrl;
+
+
     // 카테고리 표시명 반환
     public String getDisplayCategory() {
         if (category == null || category.trim().isEmpty()) {
