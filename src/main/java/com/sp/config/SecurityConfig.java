@@ -50,6 +50,7 @@ public class SecurityConfig {
                         .requestMatchers("/oauth2/**").permitAll()
                         .requestMatchers("/login/oauth2/**").permitAll()
                         .requestMatchers("/error").permitAll()
+                        .requestMatchers("/api/v1/boards/popular").permitAll()
 
                         // 인증이 필요한 엔드포인트
                         .requestMatchers("/api/v1/boards/**").authenticated()
@@ -73,9 +74,8 @@ public class SecurityConfig {
 
         config.setAllowedOriginPatterns(Arrays.asList(
                 "https://kdark.weareshadowpins.com",
-                "https://darkmap-pi.vercel.app",
-                "https://*.vercel.app",
                 "https://api.kdark.weareshadowpins.com",
+                "https://*.vercel.app",
                 "http://localhost:*",
                 "http://127.0.0.1:*"
         ));
