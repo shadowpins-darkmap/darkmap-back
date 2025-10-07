@@ -9,6 +9,7 @@ import com.sp.token.service.GoogleTokenService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseCookie;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClient;
@@ -18,8 +19,11 @@ import org.springframework.security.web.authentication.AuthenticationSuccessHand
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.net.URI;
 import java.time.Duration;
 import java.time.LocalDateTime;
+
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
@@ -72,75 +76,98 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
                 LocalDateTime.now().plusDays(7)
         );
 
-        // 동적으로 환경 판단
-        String frontendUrl = determineFrontendUrl(request);
-        String cookieDomain = determineCookieDomain(request);
+        // 요청 출처 기반으로 환경 판단
+        EnvironmentConfig envConfig = determineEnvironment(request);
+
+        log.info("OAuth2 Success - Frontend: {}, Cookie Domain: {}, Is Local: {}",
+                envConfig.frontendUrl, envConfig.cookieDomain, envConfig.isLocal);
 
         // 쿠키 설정
         ResponseCookie.ResponseCookieBuilder cookieBuilder = ResponseCookie.from("refresh_token", refreshToken)
                 .httpOnly(true)
-                .secure(!cookieDomain.equals("localhost"))
+                .secure(!envConfig.isLocal)
                 .path("/")
-                .sameSite("None")
                 .maxAge(Duration.ofDays(7));
 
-        if (!cookieDomain.equals("localhost")) {
-            cookieBuilder.domain(cookieDomain);
+        // 로컬 환경이 아닌 경우에만 domain과 sameSite 설정
+        if (!envConfig.isLocal) {
+            cookieBuilder.domain(envConfig.cookieDomain);
+            cookieBuilder.sameSite("None");
+        } else {
+            cookieBuilder.sameSite("Lax");
         }
 
         ResponseCookie refreshCookie = cookieBuilder.build();
         response.addHeader("Set-Cookie", refreshCookie.toString());
 
         // 동적 리다이렉트
-        String redirectUrl = frontendUrl + "/social-redirect-google?success=true&token=" + accessToken;
+        String redirectUrl = envConfig.frontendUrl + "/social-redirect-google?success=true&token=" + accessToken;
+        log.info("Redirecting to: {}", redirectUrl);
         response.sendRedirect(redirectUrl);
     }
 
-    private String determineFrontendUrl(HttpServletRequest request) {
-        String host = request.getHeader("Host");
-        String referer = request.getHeader("Referer");
+    // 요청출처 사용
+    private EnvironmentConfig determineEnvironment(HttpServletRequest request) {
         String origin = request.getHeader("Origin");
+        String referer = request.getHeader("Referer");
 
-        // 1. Referer 헤더에서 판단 (OAuth 시작점)
-        if (referer != null) {
-            if (referer.contains("localhost")) {
-                return "http://localhost:3000";
-            } else if (referer.contains("darkmap-pi.vercel.app")) {
-                return "https://darkmap-pi.vercel.app";
-            } else if (referer.contains("kdark.weareshadowpins.co.kr")) {
-                return "https://kdark.weareshadowpins.co.kr";
-            }
+        log.debug("OAuth2 Request headers - Origin: {}, Referer: {}", origin, referer);
+
+        // 1. Origin 헤더가 있으면 그대로 사용
+        if (origin != null && !origin.isEmpty()) {
+            boolean isLocal = origin.contains("localhost") || origin.contains("127.0.0.1");
+            String cookieDomain = isLocal ? "localhost" : extractDomain(origin);
+            return new EnvironmentConfig(origin, cookieDomain, isLocal);
         }
 
-        // 2. Origin 헤더에서 판단
-        if (origin != null) {
-            if (origin.contains("localhost")) {
-                return "http://localhost:3000";
-            } else if (origin.contains("darkmap-pi.vercel.app")) {
-                return "https://darkmap-pi.vercel.app";
-            } else if (origin.contains("kdark.weareshadowpins.co.kr")) {
-                return "https://kdark.weareshadowpins.co.kr";
-            }
+        // 2. Referer에서 origin 추출
+        if (referer != null && !referer.isEmpty()) {
+            String extractedOrigin = extractOriginFromReferer(referer);
+            boolean isLocal = extractedOrigin.contains("localhost") || extractedOrigin.contains("127.0.0.1");
+            String cookieDomain = isLocal ? "localhost" : extractDomain(extractedOrigin);
+            return new EnvironmentConfig(extractedOrigin, cookieDomain, isLocal);
         }
 
-        // 3. Host 헤더에서 판단 (API 서버 기준)
-        if (host != null) {
-            if (host.contains("localhost")) {
-                return "http://localhost:3000";
-            }
-        }
-
-        // 4. 기본값 (운영환경)
-        return "https://kdark.weareshadowpins.co.kr";
+        // 3. 기본값 (운영환경)
+        return new EnvironmentConfig(
+                "https://kdark.weareshadowpins.co.kr",
+                "api.kdark.weareshadowpins.com",
+                false
+        );
     }
 
-    private String determineCookieDomain(HttpServletRequest request) {
-        String host = request.getHeader("Host");
-
-        if (host != null && host.contains("localhost")) {
-            return "localhost";
+    private String extractOriginFromReferer(String referer) {
+        try {
+            URI uri = new URI(referer);
+            return uri.getScheme() + "://" + uri.getAuthority();
+        } catch (Exception e) {
+            log.warn("Failed to parse referer: {}", referer, e);
+            // fallback: 간단한 문자열 파싱
+            try {
+                String[] parts = referer.split("/");
+                if (parts.length >= 3) {
+                    return parts[0] + "//" + parts[2];
+                }
+            } catch (Exception ex) {
+                log.error("Failed to extract origin from referer: {}", referer, ex);
+            }
+            return referer;
         }
+    }
 
-        return "api.kdark.weareshadowpins.com";
+    private String extractDomain(String origin) {
+        return origin.replaceAll("^https?://", "");
+    }
+
+    private static class EnvironmentConfig {
+        String frontendUrl;
+        String cookieDomain;
+        boolean isLocal;
+
+        EnvironmentConfig(String frontendUrl, String cookieDomain, boolean isLocal) {
+            this.frontendUrl = frontendUrl;
+            this.cookieDomain = cookieDomain;
+            this.isLocal = isLocal;
+        }
     }
 }

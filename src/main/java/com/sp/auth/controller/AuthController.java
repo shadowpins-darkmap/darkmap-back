@@ -22,8 +22,8 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
+import java.net.URI;
 import java.time.Duration;
-import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.Map;
 
@@ -81,7 +81,7 @@ public class AuthController {
             refreshTokenService.deleteByMemberId(id);
 
             // 쿠키 삭제
-            clearTokenCookies(response, null); // request가 없으므로 기본값 사용
+            clearTokenCookies(response, null);
 
             return ResponseEntity.ok().body(Map.of("message", "카카오 탈퇴가 완료되었습니다."));
 
@@ -211,22 +211,27 @@ public class AuthController {
     }
 
     private void setTokensAndRedirect(AuthResponse authResponse, HttpServletResponse response, HttpServletRequest request) throws IOException {
-        // 동적으로 쿠키 도메인 결정
-        String cookieDomain = determineCookieDomain(request);
+        // 요청 출처 기반으로 환경 판단
+        EnvironmentConfig envConfig = determineEnvironment(request);
+
+        log.info("Environment detected - Frontend: {}, Cookie Domain: {}, Is Local: {}",
+                envConfig.frontendUrl, envConfig.cookieDomain, envConfig.isLocal);
 
         // Refresh Token을 환경에 맞는 쿠키에 저장
         String refreshToken = authResponse.getRefreshToken();
         if (refreshToken != null) {
             ResponseCookie.ResponseCookieBuilder cookieBuilder = ResponseCookie.from("refresh_token", refreshToken)
                     .httpOnly(true)
-                    .secure(!cookieDomain.equals("localhost")) // localhost일 때는 secure false
+                    .secure(!envConfig.isLocal)
                     .path("/")
-                    .sameSite("None")
                     .maxAge(Duration.ofDays(7));
 
-            // localhost가 아닌 경우에만 domain 설정
-            if (!cookieDomain.equals("localhost")) {
-                cookieBuilder.domain(cookieDomain);
+            // 로컬 환경이 아닌 경우에만 domain과 sameSite 설정
+            if (!envConfig.isLocal) {
+                cookieBuilder.domain(envConfig.cookieDomain);
+                cookieBuilder.sameSite("None");
+            } else {
+                cookieBuilder.sameSite("Lax");
             }
 
             ResponseCookie refreshCookie = cookieBuilder.build();
@@ -234,25 +239,29 @@ public class AuthController {
         }
 
         // 동적으로 프론트엔드 URL 결정하여 리다이렉트
-        String frontendUrl = determineFrontendUrl(request);
-        String redirectUrl = frontendUrl + "/social-redirect-kakao?success=true&token=" + authResponse.getJwtToken();
+        String redirectUrl = envConfig.frontendUrl + "/social-redirect-kakao?success=true&token=" + authResponse.getJwtToken();
+        log.info("Redirecting to: {}", redirectUrl);
         response.sendRedirect(redirectUrl);
     }
 
     private void clearTokenCookies(HttpServletResponse response, HttpServletRequest request) {
-        // request가 null인 경우 기본값 사용
-        String cookieDomain = (request != null) ? determineCookieDomain(request) : "api.kdark.weareshadowpins.com";
+        // request가 null인 경우 운영 환경 기본값 사용
+        EnvironmentConfig envConfig = (request != null)
+                ? determineEnvironment(request)
+                : new EnvironmentConfig("https://kdark.weareshadowpins.co.kr", "api.kdark.weareshadowpins.com", false);
 
         ResponseCookie.ResponseCookieBuilder cookieBuilder = ResponseCookie.from("refresh_token", "")
                 .path("/")
                 .maxAge(0)
                 .httpOnly(true)
-                .secure(!cookieDomain.equals("localhost")) // localhost일 때는 secure false
-                .sameSite("None");
+                .secure(!envConfig.isLocal);
 
-        // localhost가 아닌 경우에만 domain 설정
-        if (!cookieDomain.equals("localhost")) {
-            cookieBuilder.domain(cookieDomain);
+        // 로컬 환경이 아닌 경우에만 domain과 sameSite 설정
+        if (!envConfig.isLocal) {
+            cookieBuilder.domain(envConfig.cookieDomain);
+            cookieBuilder.sameSite("None");
+        } else {
+            cookieBuilder.sameSite("Lax");
         }
 
         ResponseCookie clearRefreshCookie = cookieBuilder.build();
@@ -271,53 +280,68 @@ public class AuthController {
         return null;
     }
 
-    // 동적으로 프론트엔드 URL 결정
-    private String determineFrontendUrl(HttpServletRequest request) {
-        String host = request.getHeader("Host");
-        String referer = request.getHeader("Referer");
+    // 요청 출처 사용
+    private EnvironmentConfig determineEnvironment(HttpServletRequest request) {
         String origin = request.getHeader("Origin");
+        String referer = request.getHeader("Referer");
 
-        // 1. Referer 헤더에서 판단 (OAuth 시작점)
-        if (referer != null) {
-            if (referer.contains("localhost")) {
-                return "http://localhost:3000";
-            } else if (referer.contains("darkmap-pi.vercel.app")) {
-                return "https://darkmap-pi.vercel.app";
-            } else if (referer.contains("kdark.weareshadowpins.co.kr")) {
-                return "https://kdark.weareshadowpins.co.kr";
-            }
+        log.debug("Request headers - Origin: {}, Referer: {}", origin, referer);
+
+        // 1. Origin 헤더가 있으면 그대로 사용
+        if (origin != null && !origin.isEmpty()) {
+            boolean isLocal = origin.contains("localhost") || origin.contains("127.0.0.1");
+            String cookieDomain = isLocal ? "localhost" : extractDomain(origin);
+            return new EnvironmentConfig(origin, cookieDomain, isLocal);
         }
 
-        // 2. Origin 헤더에서 판단
-        if (origin != null) {
-            if (origin.contains("localhost")) {
-                return "http://localhost:3000";
-            } else if (origin.contains("darkmap-pi.vercel.app")) {
-                return "https://darkmap-pi.vercel.app";
-            } else if (origin.contains("kdark.weareshadowpins.co.kr")) {
-                return "https://kdark.weareshadowpins.co.kr";
-            }
+        // 2. Referer에서 origin 추출
+        if (referer != null && !referer.isEmpty()) {
+            String extractedOrigin = extractOriginFromReferer(referer);
+            boolean isLocal = extractedOrigin.contains("localhost") || extractedOrigin.contains("127.0.0.1");
+            String cookieDomain = isLocal ? "localhost" : extractDomain(extractedOrigin);
+            return new EnvironmentConfig(extractedOrigin, cookieDomain, isLocal);
         }
 
-        // 3. Host 헤더에서 판단 (API 서버 기준)
-        if (host != null) {
-            if (host.contains("localhost")) {
-                return "http://localhost:3000";
-            }
-        }
-
-        // 4. 기본값 (운영환경)
-        return "https://kdark.weareshadowpins.co.kr";
+        // 3. 기본값 (운영환경)
+        return new EnvironmentConfig(
+                "https://kdark.weareshadowpins.co.kr",
+                "api.kdark.weareshadowpins.com",
+                false
+        );
     }
 
-    // 동적으로 쿠키 도메인 결정
-    private String determineCookieDomain(HttpServletRequest request) {
-        String host = request.getHeader("Host");
-
-        if (host != null && host.contains("localhost")) {
-            return "localhost";
+    private String extractOriginFromReferer(String referer) {
+        try {
+            URI uri = new URI(referer);
+            return uri.getScheme() + "://" + uri.getAuthority();
+        } catch (Exception e) {
+            log.warn("Failed to parse referer: {}", referer, e);
+            // fallback: 간단한 문자열 파싱
+            try {
+                String[] parts = referer.split("/");
+                if (parts.length >= 3) {
+                    return parts[0] + "//" + parts[2];
+                }
+            } catch (Exception ex) {
+                log.error("Failed to extract origin from referer: {}", referer, ex);
+            }
+            return referer;
         }
+    }
 
-        return "api.kdark.weareshadowpins.com";
+    private String extractDomain(String origin) {
+        return origin.replaceAll("^https?://", "");
+    }
+
+    private static class EnvironmentConfig {
+        String frontendUrl;
+        String cookieDomain;
+        boolean isLocal;
+
+        EnvironmentConfig(String frontendUrl, String cookieDomain, boolean isLocal) {
+            this.frontendUrl = frontendUrl;
+            this.cookieDomain = cookieDomain;
+            this.isLocal = isLocal;
+        }
     }
 }
