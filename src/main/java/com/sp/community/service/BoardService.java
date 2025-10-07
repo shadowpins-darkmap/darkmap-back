@@ -409,6 +409,7 @@ public class BoardService {
                 .title(entity.getTitle())
                 .authorId(entity.getAuthorId())
                 .authorNickname(entity.getAuthorNickname())
+                .content(entity.getContent())
                 .category(entity.getCategory())
                 .reportType(entity.getReportType())
                 .reportLocation(entity.getReportLocation())
