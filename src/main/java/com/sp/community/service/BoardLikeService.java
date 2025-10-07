@@ -295,6 +295,7 @@ public class BoardLikeService {
                 .boardId(entity.getBoardId())
                 .title(entity.getTitle())
                 .authorId(entity.getAuthorId())
+                .content(entity.getContent())
                 .authorNickname(entity.getAuthorNickname())
                 .category(entity.getCategory())
                 .viewCount(entity.getViewCount())
