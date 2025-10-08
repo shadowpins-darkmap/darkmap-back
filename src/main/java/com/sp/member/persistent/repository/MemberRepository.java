@@ -12,6 +12,6 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
     Optional<Member> findByEmail(String email);
     boolean existsByNickname(String nickname);
     boolean existsByNicknameAndIdNot(String nickname, Long id);
-    @Query("SELECT m.nickname FROM Member m WHERE m.memberId = :memberId AND m.isDeleted = false")
-    Optional<String> findNicknameByMemberId(@Param("memberId") String memberId);
+    @Query("SELECT m.nickname FROM Member m WHERE m.id = :memberId AND m.isDeleted = false")
+    Optional<String> findNicknameByMemberId(@Param("memberId") Long memberId);
 }

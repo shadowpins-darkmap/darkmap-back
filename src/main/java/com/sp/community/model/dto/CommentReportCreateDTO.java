@@ -30,8 +30,7 @@ public class CommentReportCreateDTO {
     /**
      * 신고자 ID
      */
-    @Size(max = 50, message = "신고자 ID는 50자 이하로 입력해주세요.")
-    private String reporterId;
+    private Long reporterId;
 
     /**
      * 신고 분류

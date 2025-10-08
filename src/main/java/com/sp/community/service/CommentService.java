@@ -47,7 +47,7 @@ public class CommentService {
      * 댓글 생성
      */
     @Transactional
-    public CommentVO createComment(CommentCreateDTO createDTO, String userId) {
+    public CommentVO createComment(CommentCreateDTO createDTO, Long userId) {
         log.info("댓글 생성 시작: boardId={}, authorId={}", createDTO.getBoardId());
 
         // DTO 검증
@@ -62,7 +62,7 @@ public class CommentService {
                 .board(boardEntity)
                 .content(createDTO.getTrimmedContent())
                 .authorId(userId)
-                .authorNickname(memberRepository.findNicknameByMemberId(userId)+"")
+                //.authorNickname(memberRepository.findNicknameByMemberId(userId)+"")
                 .build();
 
         CommentEntity savedComment = commentRepository.save(commentEntity);
@@ -110,7 +110,7 @@ public class CommentService {
      * 댓글 삭제 (소프트 삭제)
      */
     @Transactional
-    public void deleteComment(Long commentId, String currentUserId) {
+    public void deleteComment(Long commentId, Long currentUserId) {
         log.info("댓글 삭제 시작: commentId={}", commentId);
 
         // 댓글 조회
@@ -138,7 +138,7 @@ public class CommentService {
     /**
      * 특정 게시글의 댓글 목록 조회
      */
-    public List<CommentVO> getBoardComments(Long boardId, String currentUserId, PageRequestDTO pageRequestDTO) {
+    public List<CommentVO> getBoardComments(Long boardId, Long currentUserId, PageRequestDTO pageRequestDTO) {
         log.debug("게시글 댓글 목록 조회: boardId={}", boardId);
 
         // 게시글 존재 확인
@@ -166,7 +166,7 @@ public class CommentService {
     /**
      * 댓글 상세 조회
      */
-    public CommentVO getComment(Long commentId, String currentUserId) {
+    public CommentVO getComment(Long commentId, Long currentUserId) {
         log.debug("댓글 상세 조회: commentId={}", commentId);
 
         CommentEntity commentEntity = commentRepository.findById(commentId)
@@ -183,7 +183,7 @@ public class CommentService {
     /**
      * 사용자별 댓글 목록 조회
      */
-    public List<CommentVO> getUserComments(String authorId, String currentUserId, PageRequestDTO pageRequestDTO) {
+    public List<CommentVO> getUserComments(Long authorId, Long currentUserId, PageRequestDTO pageRequestDTO) {
         log.debug("사용자 댓글 목록 조회: authorId={}", authorId);
 
         if (pageRequestDTO != null) {
@@ -205,11 +205,11 @@ public class CommentService {
      * 댓글 좋아요 토글
      */
     @Transactional
-    public boolean toggleCommentLike(Long commentId, String userId, String userNickname) {
+    public boolean toggleCommentLike(Long commentId, Long userId) {
         log.info("댓글 좋아요 토글: commentId={}, userId={}", commentId, userId);
 
         // 입력값 검증
-        validateLikeInput(commentId, userId, userNickname);
+        validateLikeInput(commentId, userId);
 
         // 댓글 존재 확인
         CommentEntity commentEntity = commentRepository.findById(commentId)
@@ -248,7 +248,6 @@ public class CommentService {
         CommentLikeEntity newLike = CommentLikeEntity.builder()
                 .comment(commentEntity)
                 .userId(userId)
-                .userNickname(userNickname)
                 .build();
 
         commentLikeRepository.save(newLike);
@@ -261,8 +260,8 @@ public class CommentService {
     /**
      * 댓글 좋아요 여부 확인
      */
-    public boolean hasUserLikedComment(Long commentId, String userId) {
-        if (commentId == null || !StringUtils.hasText(userId)) {
+    public boolean hasUserLikedComment(Long commentId, Long userId) {
+        if (commentId == null || userId == null) {
             return false;
         }
 
@@ -284,7 +283,7 @@ public class CommentService {
     /**
      * 인기 댓글 조회
      */
-    public List<CommentVO> getPopularComments(int minLikes, String currentUserId, PageRequestDTO pageRequestDTO) {
+    public List<CommentVO> getPopularComments(int minLikes, Long currentUserId, PageRequestDTO pageRequestDTO) {
         log.debug("인기 댓글 조회: minLikes={}", minLikes);
 
         if (pageRequestDTO != null) {
@@ -313,7 +312,7 @@ public class CommentService {
      * 특정 사용자의 댓글 수 조회
      */
     public Long getMemberCommentCount(Long memberId) {
-        return commentRepository.countByAuthorIdAndNotDeleted(memberId+"");
+        return commentRepository.countByAuthorIdAndNotDeleted(memberId);
     }
 
     /**
@@ -382,13 +381,13 @@ public class CommentService {
     /**
      * 사용자 닉네임 조회 헬퍼 메서드
      */
-    private String getAuthorNickname(String authorId) {
+    private String getAuthorNickname(Long authorId) {
         try {
             return memberRepository.findNicknameByMemberId(authorId)
-                    .orElse(authorId);
+                    .orElse(authorId.toString());
         } catch (Exception e) {
             log.warn("닉네임 조회 실패: authorId={}", authorId);
-            return authorId;
+            return authorId.toString();
         }
     }
 
@@ -406,7 +405,7 @@ public class CommentService {
     /**
      * 수정 권한 확인
      */
-    private void validateEditPermission(CommentEntity commentEntity, String editorId) {
+    private void validateEditPermission(CommentEntity commentEntity, Long editorId) {
         if (!commentEntity.getAuthorId().equals(editorId)) {
             throw new UnauthorizedException("댓글 수정 권한이 없습니다.");
         }
@@ -415,7 +414,7 @@ public class CommentService {
     /**
      * 삭제 권한 확인
      */
-    private void validateDeletePermission(CommentEntity commentEntity, String currentUserId) {
+    private void validateDeletePermission(CommentEntity commentEntity, Long currentUserId) {
         if (!commentEntity.getAuthorId().equals(currentUserId)) {
             throw new UnauthorizedException("댓글 삭제 권한이 없습니다.");
         }
@@ -424,30 +423,26 @@ public class CommentService {
     /**
      * 좋아요 입력값 검증
      */
-    private void validateLikeInput(Long commentId, String userId, String userNickname) {
+    private void validateLikeInput(Long commentId, Long userId) {
         if (commentId == null) {
             throw new IllegalArgumentException("댓글 ID는 필수입니다.");
         }
 
-        if (!StringUtils.hasText(userId)) {
+        if (userId == null) {
             throw new IllegalArgumentException("사용자 ID는 필수입니다.");
-        }
-
-        if (!StringUtils.hasText(userNickname)) {
-            throw new IllegalArgumentException("사용자 닉네임은 필수입니다.");
         }
     }
 
     /**
      * Entity를 VO로 변환
      */
-    private CommentVO convertToVO(CommentEntity entity, String currentUserId) {
+    private CommentVO convertToVO(CommentEntity entity, Long currentUserId) {
         CommentVO commentVO = CommentVO.builder()
                 .commentId(entity.getCommentId())
                 .boardId(entity.getBoard().getBoardId())
                 .content(entity.getContent())
                 .authorId(entity.getAuthorId())
-                .authorNickname(entity.getAuthorNickname())
+                .authorNickname(getAuthorNickname(entity.getAuthorId()))
                 .likeCount(entity.getLikeCount())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
@@ -457,7 +452,7 @@ public class CommentService {
                 .build();
 
         // 현재 사용자의 좋아요 여부 확인
-        if (StringUtils.hasText(currentUserId)) {
+        if (currentUserId != null) {
             boolean isLiked = hasUserLikedComment(entity.getCommentId(), currentUserId);
             commentVO.setIsLiked(isLiked);
         }

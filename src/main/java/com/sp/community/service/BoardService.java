@@ -67,8 +67,8 @@ public class BoardService {
      * @param authorId 작성자 ID
      * @return 승인된 제보글 개수
      */
-    public Long getApprovedReportCountByAuthor(String authorId) {
-        if (authorId == null || authorId.trim().isEmpty()) {
+    public Long getApprovedReportCountByAuthor(Long authorId) {
+        if (authorId == null) {
             throw new IllegalArgumentException("작성자 ID는 필수입니다.");
         }
 
@@ -95,14 +95,14 @@ public class BoardService {
         createDTO.validate();
 
         String nickname = memberRepository.findNicknameByMemberId(createDTO.getAuthorId())
-                .orElse(createDTO.getAuthorId());
+                .orElse(createDTO.getAuthorId().toString());
 
         // BoardEntity 빌더로 기본 정보 설정
         BoardEntity.BoardEntityBuilder builder = BoardEntity.builder()
                 .title(createDTO.getTrimmedTitle())
                 .content(createDTO.getTrimmedContent())
                 .authorId(createDTO.getAuthorId())
-                .authorNickname(nickname)
+                //.authorNickname(nickname)
                 .category(createDTO.getNormalizedCategory())
                 .isNotice(createDTO.getIsNotice());
 
@@ -177,7 +177,7 @@ public class BoardService {
      * 게시글 상세 조회
      */
     @Transactional
-    public BoardDetailVO getBoardDetail(Long boardId, String currentUserId) {
+    public BoardDetailVO getBoardDetail(Long boardId, Long currentUserId) {
         log.debug("게시글 상세 조회: ID={}", boardId);
         BoardEntity boardEntity = boardRepository.findByIdAndNotDeleted(boardId)
                 .orElseThrow(() -> new BoardNotFoundException("게시글을 찾을 수 없습니다."));
@@ -216,7 +216,7 @@ public class BoardService {
      * 게시글 삭제 (소프트 삭제)
      */
     @Transactional
-    public void deleteBoard(Long boardId, String currentUserId) {
+    public void deleteBoard(Long boardId, Long currentUserId) {
         log.info("게시글 삭제 시작: ID={}", boardId);
         BoardEntity boardEntity = boardRepository.findByIdAndNotDeleted(boardId)
                 .orElseThrow(() -> new BoardNotFoundException("게시글을 찾을 수 없습니다."));
@@ -239,7 +239,7 @@ public class BoardService {
      * 게시글 이미지만 삭제
      */
     @Transactional
-    public void deleteBoardImage(Long boardId, String currentUserId) {
+    public void deleteBoardImage(Long boardId, Long currentUserId) {
         log.info("게시글 이미지 삭제 시작: boardId={}", boardId);
         BoardEntity boardEntity = boardRepository.findByIdAndNotDeleted(boardId)
                 .orElseThrow(() -> new BoardNotFoundException("게시글을 찾을 수 없습니다."));
@@ -289,7 +289,7 @@ public class BoardService {
     /**
      * 사용자별 게시글 조회
      */
-    public BoardListVO getUserBoards(String authorId, PageRequestDTO pageRequestDTO) {
+    public BoardListVO getUserBoards(Long authorId, PageRequestDTO pageRequestDTO) {
         log.debug("사용자 게시글 조회: authorId={}", authorId);
 
         if (pageRequestDTO != null) {
@@ -382,7 +382,7 @@ public class BoardService {
     /**
      * 수정 권한 확인
      */
-    private void validateEditPermission(BoardEntity boardEntity, String editorId) {
+    private void validateEditPermission(BoardEntity boardEntity, Long editorId) {
         if (!boardEntity.getAuthorId().equals(editorId)) {
             throw new UnauthorizedException("게시글 수정 권한이 없습니다.");
         }
@@ -391,7 +391,7 @@ public class BoardService {
     /**
      * 삭제 권한 확인
      */
-    private void validateDeletePermission(BoardEntity boardEntity, String currentUserId) {
+    private void validateDeletePermission(BoardEntity boardEntity, Long currentUserId) {
         if (!boardEntity.getAuthorId().equals(currentUserId)) {
             throw new UnauthorizedException("게시글 삭제 권한이 없습니다.");
         }
@@ -408,7 +408,7 @@ public class BoardService {
                 .boardId(entity.getBoardId())
                 .title(entity.getTitle())
                 .authorId(entity.getAuthorId())
-                .authorNickname(entity.getAuthorNickname())
+                .authorNickname(memberRepository.findNicknameByMemberId(entity.getAuthorId()).toString())
                 .content(entity.getContent())
                 .category(entity.getCategory())
                 .reportType(entity.getReportType())
@@ -429,7 +429,7 @@ public class BoardService {
     /**
      * Entity를 DetailVO로 변환
      */
-    private BoardDetailVO convertToDetailVO(BoardEntity entity, String currentUserId) {
+    private BoardDetailVO convertToDetailVO(BoardEntity entity, Long currentUserId) {
         // 이미지 파일 정보 조회
         Optional<FileUploadResponse> imageInfo = fileService.getBoardImageInfo(entity.getBoardId());
 
@@ -438,7 +438,7 @@ public class BoardService {
                 .title(entity.getTitle())
                 .content(entity.getContent())
                 .authorId(entity.getAuthorId())
-                .authorNickname(entity.getAuthorNickname())
+                .authorNickname(memberRepository.findNicknameByMemberId(entity.getAuthorId()).toString())
                 .category(entity.getCategory())
                 .reportType(entity.getReportType())
                 .reportLocation(entity.getReportLocation())
@@ -458,7 +458,7 @@ public class BoardService {
                 .build();
 
         // 현재 사용자의 좋아요 여부 확인
-        if (StringUtils.hasText(currentUserId)) {
+        if (currentUserId != null) {
             boolean isLiked = boardLikeService.hasUserLiked(entity.getBoardId(), currentUserId);
             detailVO.setIsLiked(isLiked);
         }

@@ -10,6 +10,7 @@ import com.sp.community.persistent.entity.BoardReportEntity;
 import com.sp.community.persistent.repository.BoardReportRepository;
 import com.sp.community.persistent.repository.BoardRepository;
 import com.sp.config.FileProperties;
+import com.sp.member.persistent.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -38,6 +39,7 @@ public class BoardReportService {
     private final BoardRepository boardRepository;
     private final FileProperties fileProperties;
     private final FileService fileService;
+    private final MemberRepository memberRepository;
 
     /**
      * 게시글 신고 생성
@@ -180,7 +182,7 @@ public class BoardReportService {
     /**
      * 특정 사용자의 신고 목록 조회
      */
-    public Page<BoardReportVO> getReportsByReporter(String reporterId, Pageable pageable) {
+    public Page<BoardReportVO> getReportsByReporter(Long reporterId, Pageable pageable) {
         log.debug("사용자 신고 목록 조회 요청: reporterId={}", reporterId);
 
         Page<BoardReportEntity> reports = boardReportRepository.findByReporterId(reporterId, pageable);
@@ -230,7 +232,7 @@ public class BoardReportService {
      * 신고 취소 (신고자 본인만 가능)
      */
     @Transactional
-    public void cancelReport(Long reportId, String userId) {
+    public void cancelReport(Long reportId, Long userId) {
         log.info("신고 취소 요청: reportId={}, userId={}", reportId, userId);
 
         BoardReportEntity report = boardReportRepository.findById(reportId)
@@ -356,7 +358,7 @@ public class BoardReportService {
     /**
      * 사용자의 신고 여부 확인
      */
-    public boolean hasUserReported(Long boardId, String userId) {
+    public boolean hasUserReported(Long boardId, Long userId) {
         return boardReportRepository.existsByBoardIdAndReporterId(boardId, userId);
     }
 
@@ -424,6 +426,18 @@ public class BoardReportService {
 
         return PageRequest.of(searchDTO.getPage(), searchDTO.getSize(), sort);
     }
+    /**
+     * 사용자 닉네임 조회 헬퍼 메서드
+     */
+    private String getAuthorNickname(Long authorId) {
+        try {
+            return memberRepository.findNicknameByMemberId(authorId)
+                    .orElse(authorId+"");
+        } catch (Exception e) {
+            log.warn("닉네임 조회 실패: authorId={}", authorId);
+            return authorId+"";
+        }
+    }
 
     /**
      * Entity를 VO로 변환
@@ -433,7 +447,7 @@ public class BoardReportService {
                 .reportId(entity.getReportId())
                 .boardId(entity.getBoard().getBoardId())
                 .boardTitle(entity.getBoard().getTitle())
-                .boardAuthorNickname(entity.getBoard().getAuthorNickname())
+                .boardAuthorNickname(getAuthorNickname(entity.getReporterId()))
                 .reporterId(entity.getReporterId())
                 .reportType(entity.getReportType())
                 .reportTypeDescription(entity.getReportType().getDescription())

@@ -10,6 +10,7 @@ import com.sp.community.persistent.repository.CommentReportRepository;
 import com.sp.community.persistent.repository.CommentRepository;
 import com.sp.config.FileProperties;
 import com.sp.exception.CommentNotFoundException;
+import com.sp.member.persistent.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
@@ -33,6 +34,7 @@ public class CommentReportService {
     private final CommentRepository commentRepository;
     private final FileProperties fileProperties;
     private final FileService fileService;
+    private final MemberRepository memberRepository;
 
     /**
      * 댓글 신고 생성
@@ -122,7 +124,7 @@ public class CommentReportService {
     /**
      * 사용자의 신고 여부 확인
      */
-    public boolean hasUserReported(Long commentId, String userId) {
+    public boolean hasUserReported(Long commentId, Long userId) {
         return commentReportRepository.existsByCommentIdAndReporterId(commentId, userId);
     }
 
@@ -133,6 +135,18 @@ public class CommentReportService {
         return commentReportRepository.countByCommentId(commentId);
     }
 
+    /**
+     * 사용자 닉네임 조회 헬퍼 메서드
+     */
+    private String getAuthorNickname(Long authorId) {
+        try {
+            return memberRepository.findNicknameByMemberId(authorId)
+                    .orElse(authorId.toString());
+        } catch (Exception e) {
+            log.warn("닉네임 조회 실패: authorId={}", authorId);
+            return authorId.toString();
+        }
+    }
     // === Private Helper Methods ===
 
     /**
@@ -186,7 +200,7 @@ public class CommentReportService {
                 .commentId(entity.getComment().getCommentId())
                 .commentContent(entity.getComment().getContent())
                 .commentAuthorId(entity.getComment().getAuthorId())
-                .commentAuthorNickname(entity.getComment().getAuthorNickname())
+                .commentAuthorNickname(getAuthorNickname(entity.getReporterId()))
                 .boardId(entity.getComment().getBoard().getBoardId())
                 .boardTitle(entity.getComment().getBoard().getTitle())
                 .reporterId(entity.getReporterId())

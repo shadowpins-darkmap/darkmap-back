@@ -24,7 +24,7 @@ public interface CommentReportRepository extends JpaRepository<CommentReportEnti
      * 특정 댓글의 특정 사용자 신고 존재 여부 확인
      */
     @Query("SELECT COUNT(cr) > 0 FROM CommentReportEntity cr WHERE cr.comment.commentId = :commentId AND cr.reporterId = :reporterId")
-    boolean existsByCommentIdAndReporterId(@Param("commentId") Long commentId, @Param("reporterId") String reporterId);
+    boolean existsByCommentIdAndReporterId(@Param("commentId") Long commentId, @Param("reporterId") Long reporterId);
 
     /**
      * 특정 댓글의 신고 목록 조회
@@ -36,7 +36,7 @@ public interface CommentReportRepository extends JpaRepository<CommentReportEnti
      * 특정 사용자가 신고한 목록 조회
      */
     @Query("SELECT cr FROM CommentReportEntity cr WHERE cr.reporterId = :reporterId ORDER BY cr.createdAt DESC")
-    Page<CommentReportEntity> findByReporterId(@Param("reporterId") String reporterId, Pageable pageable);
+    Page<CommentReportEntity> findByReporterId(@Param("reporterId") Long reporterId, Pageable pageable);
 
     /**
      * 신고 상태별 조회

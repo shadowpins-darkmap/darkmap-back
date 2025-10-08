@@ -152,7 +152,7 @@ public class MemberController {
         if (member == null) {
             return ResponseEntity.status(404).body(Map.of("error", "사용자를 찾을 수 없습니다."));
         }
-        UserActivitySummaryDTO userActivitySummaryDTO = userNotificationService.getActivitySummary(memberId+"", 48);
+        UserActivitySummaryDTO userActivitySummaryDTO = userNotificationService.getActivitySummary(memberId, 48);
 
         return ResponseEntity.ok(Map.of(
                 "id", member.getId(),
@@ -164,7 +164,7 @@ public class MemberController {
                 "myCommentCount", commentService.getMemberCommentCount(memberId),   // 사용자의 총 댓글 수
                 "newCommentsCount", userActivitySummaryDTO.getNewCommentsCount(),   // 새 댓글 수 (48시간)
                 "newLikesCount", userActivitySummaryDTO.getNewLikesCount(),         // 새 추천 수 (48시간)
-                "approvedReportCount", boardService.getApprovedReportCountByAuthor(memberId+"") // 사용자의 제보 중 지도에 등록된 수
+                "approvedReportCount", boardService.getApprovedReportCountByAuthor(memberId) // 사용자의 제보 중 지도에 등록된 수
         ));
     }
 

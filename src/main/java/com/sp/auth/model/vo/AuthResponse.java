@@ -11,7 +11,7 @@ public class AuthResponse {
     private String refreshToken;
     private Long expiresIn;
     private String email;
-    private String userId;
+    private Long userId;
     private String nickname;
     private String accessToken;
     private int loginCount;

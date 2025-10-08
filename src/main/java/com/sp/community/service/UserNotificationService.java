@@ -5,6 +5,7 @@ import com.sp.community.persistent.entity.BoardLikeEntity;
 import com.sp.community.persistent.entity.CommentEntity;
 import com.sp.community.persistent.repository.BoardLikeRepository;
 import com.sp.community.persistent.repository.CommentRepository;
+import com.sp.member.persistent.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -29,11 +30,12 @@ public class UserNotificationService {
 
     private final CommentRepository commentRepository;
     private final BoardLikeRepository boardLikeRepository;
+    private final MemberRepository memberRepository;
 
     /**
      * 사용자의 게시글에 달린 새 댓글 수 조회
      */
-    public Long getNewCommentsCount(String userId, int hours) {
+    public Long getNewCommentsCount(Long userId, int hours) {
         LocalDateTime since = LocalDateTime.now().minusHours(hours);
         return commentRepository.countNewCommentsOnUserBoards(userId, since);
     }
@@ -41,7 +43,7 @@ public class UserNotificationService {
     /**
      * 사용자의 게시글에 달린 새 좋아요 수 조회
      */
-    public Long getNewLikesCount(String userId, int hours) {
+    public Long getNewLikesCount(Long userId, int hours) {
         LocalDateTime since = LocalDateTime.now().minusHours(hours);
         return boardLikeRepository.countNewLikesOnUserBoards(userId, since);
     }
@@ -49,7 +51,7 @@ public class UserNotificationService {
     /**
      * 사용자 활동 요약 조회
      */
-    public UserActivitySummaryDTO getActivitySummary(String userId, int hours) {
+    public UserActivitySummaryDTO getActivitySummary(Long userId, int hours) {
         LocalDateTime since = LocalDateTime.now().minusHours(hours);
         LocalDateTime now = LocalDateTime.now();
 
@@ -71,7 +73,7 @@ public class UserNotificationService {
     /**
      * 사용자의 게시글에 달린 새 댓글 목록 조회
      */
-    public List<NewCommentNotificationDTO> getNewCommentNotifications(String userId, int hours, PageRequestDTO pageRequestDTO) {
+    public List<NewCommentNotificationDTO> getNewCommentNotifications(Long userId, int hours, PageRequestDTO pageRequestDTO) {
         LocalDateTime since = LocalDateTime.now().minusHours(hours);
 
         if (pageRequestDTO == null) {
@@ -95,7 +97,7 @@ public class UserNotificationService {
     /**
      * 사용자의 게시글에 달린 새 좋아요 목록 조회
      */
-    public List<NewLikeNotificationDTO> getNewLikeNotifications(String userId, int hours, PageRequestDTO pageRequestDTO) {
+    public List<NewLikeNotificationDTO> getNewLikeNotifications(Long userId, int hours, PageRequestDTO pageRequestDTO) {
         LocalDateTime since = LocalDateTime.now().minusHours(hours);
 
         if (pageRequestDTO == null) {
@@ -119,7 +121,7 @@ public class UserNotificationService {
     /**
      * 사용자 알림 통합 조회 (댓글 + 좋아요)
      */
-    public UserNotificationListDTO getUserNotifications(String userId, int hours, PageRequestDTO pageRequestDTO) {
+    public UserNotificationListDTO getUserNotifications(Long userId, int hours, PageRequestDTO pageRequestDTO) {
         log.info("사용자 알림 통합 조회: userId={}, hours={}", userId, hours);
 
         // 활동 요약
@@ -156,6 +158,19 @@ public class UserNotificationService {
     // ============ Private Helper Methods ============
 
     /**
+     * 사용자 닉네임 조회 헬퍼 메서드
+     */
+    private String getAuthorNickname(Long authorId) {
+        try {
+            return memberRepository.findNicknameByMemberId(authorId)
+                    .orElse(authorId.toString());
+        } catch (Exception e) {
+            log.warn("닉네임 조회 실패: authorId={}", authorId);
+            return authorId.toString();
+        }
+    }
+
+    /**
      * CommentEntity를 NewCommentNotificationDTO로 변환
      */
     private NewCommentNotificationDTO convertToNewCommentNotificationDTO(CommentEntity comment) {
@@ -163,7 +178,7 @@ public class UserNotificationService {
                 .commentId(comment.getCommentId())
                 .content(comment.getContent())
                 .commenterUserId(comment.getAuthorId())
-                .commenterNickname(comment.getAuthorNickname())
+                .commenterNickname(getAuthorNickname(comment.getAuthorId()))
                 .boardId(comment.getBoard().getBoardId())
                 .boardTitle(comment.getBoard().getTitle())
                 .createdAt(comment.getCreatedAt())

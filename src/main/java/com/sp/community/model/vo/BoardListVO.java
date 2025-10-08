@@ -131,7 +131,7 @@ public class BoardListVO {
         private String keyword;
         private String searchType;
         private String category;
-        private String authorId;
+        private Long authorId;
         private String authorNickname;
         private List<String> tags;
         @JsonFormat(pattern = "yyyy-MM-dd")
@@ -149,7 +149,7 @@ public class BoardListVO {
         public boolean hasSearchConditions() {
             return (keyword != null && !keyword.trim().isEmpty()) ||
                     (category != null && !category.trim().isEmpty()) ||
-                    (authorId != null && !authorId.trim().isEmpty()) ||
+                    authorId != null ||
                     (authorNickname != null && !authorNickname.trim().isEmpty()) ||
                     (tags != null && !tags.isEmpty()) ||
                     startDate != null ||

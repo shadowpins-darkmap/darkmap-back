@@ -26,7 +26,7 @@ public class NewLikeNotificationDTO {
     private Long likeId;
 
     @Schema(description = "좋아요를 누른 사용자 ID", example = "user789")
-    private String likerUserId;
+    private Long likerUserId;
 
     @Schema(description = "좋아요를 누른 사용자 닉네임", example = "좋아요러789")
     private String likerNickname;

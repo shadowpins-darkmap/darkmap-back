@@ -33,7 +33,7 @@ public class BoardReportProcessDTO {
      * 처리자 ID
      */
     @Size(max = 50, message = "처리자 ID는 50자 이하로 입력해주세요.")
-    private String processorId;
+    private Long processorId;
 
     /**
      * 처리 결과/사유

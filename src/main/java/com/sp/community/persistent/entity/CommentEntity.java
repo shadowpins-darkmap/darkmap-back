@@ -50,14 +50,14 @@ public class CommentEntity {
     /**
      * 댓글 작성자 ID
      */
-    @Column(name = "author_id", nullable = false, length = 50)
-    private String authorId;
+    @Column(name = "author_id", nullable = false)
+    private Long authorId;
 
     /**
      * 댓글 작성자 닉네임
      */
-    @Column(name = "author_nickname", nullable = false, length = 50)
-    private String authorNickname;
+    //@Column(name = "author_nickname", nullable = false, length = 50)
+    //private String authorNickname;
 
     /**
      * 추천 수
@@ -242,7 +242,7 @@ public class CommentEntity {
     /**
      * 작성자가 본인인지 확인
      */
-    public boolean isAuthor(String userId) {
+    public boolean isAuthor(Long userId) {
         return this.authorId.equals(userId);
     }
 
@@ -266,7 +266,7 @@ public class CommentEntity {
                 "commentId=" + commentId +
                 ", content='" + content + '\'' +
                 ", authorId='" + authorId + '\'' +
-                ", authorNickname='" + authorNickname + '\'' +
+                //", authorNickname='" + authorNickname + '\'' +
                 ", likeCount=" + likeCount +
                 ", createdAt=" + createdAt +
                 ", isDeleted=" + isDeleted +

@@ -39,7 +39,7 @@ public class CommentVO {
     /**
      * 작성자 ID
      */
-    private String authorId;
+    private Long authorId;
 
     /**
      * 작성자 닉네임
@@ -115,7 +115,7 @@ public class CommentVO {
         if (authorNickname != null && !authorNickname.trim().isEmpty()) {
             return authorNickname;
         }
-        return authorId != null ? authorId : "알 수 없음";
+        return authorId != null ? authorId.toString() : "알 수 없음";
     }
 
     /**

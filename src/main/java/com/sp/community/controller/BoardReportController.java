@@ -66,12 +66,10 @@ public class BoardReportController {
         }
 
         try {
-            String userId = memberId.toString();
-
             // DTO 생성
             BoardReportCreateDTO createDTO = BoardReportCreateDTO.builder()
                     .boardId(boardId)
-                    .reporterId(userId)
+                    .reporterId(memberId)
                     .reportType(reportType)
                     .reason(reason)
                     .additionalInfo(additionalInfo)
@@ -79,7 +77,7 @@ public class BoardReportController {
                     .build();
 
             log.info("게시글 신고 생성 요청: boardId={}, reportType={}, reporterId={}, hasAttachment={}",
-                    boardId, reportType, userId, attachmentFile != null && !attachmentFile.isEmpty());
+                    boardId, reportType, memberId, attachmentFile != null && !attachmentFile.isEmpty());
 
             BoardReportVO reportVO = boardReportService.createReport(createDTO);
 
@@ -130,14 +128,13 @@ public class BoardReportController {
             @Parameter(description = "게시글 ID", required = true) @PathVariable Long boardId,
             @Parameter(hidden = true) @AuthenticationPrincipal Long memberId) {
 
-        String userId = memberId != null ? memberId.toString() : null;
-        boolean hasReported = boardReportService.hasUserReported(boardId, userId);
+        boolean hasReported = boardReportService.hasUserReported(boardId, memberId);
 
         // 신고 수는 관리자만 볼 수 있도록 제한하거나, 일반 사용자에게는 제공하지 않을 수 있음
         Map<String, Object> result = Map.of(
                 "boardId", boardId,
                 "hasReported", hasReported,
-                "canReport", userId != null && !hasReported
+                "canReport", memberId != null && !hasReported
         );
 
         return ResponseEntity.ok(

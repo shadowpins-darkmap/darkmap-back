@@ -110,11 +110,9 @@ public class UserNotificationController {
                             .build()
             );
         }
+        log.info("새 댓글 수 조회: userId={}, hours={}", memberId, hours);
 
-        String userId = memberId+"";
-        log.info("새 댓글 수 조회: userId={}, hours={}", userId, hours);
-
-        Long newCommentsCount = userNotificationService.getNewCommentsCount(userId, hours);
+        Long newCommentsCount = userNotificationService.getNewCommentsCount(memberId, hours);
 
         Map<String, Object> result = Map.of(
                 "newCommentsCount", newCommentsCount,
@@ -208,11 +206,9 @@ public class UserNotificationController {
                             .build()
             );
         }
+        log.info("새 좋아요 수 조회: userId={}, hours={}", memberId, hours);
 
-        String userId = memberId+"";
-        log.info("새 좋아요 수 조회: userId={}, hours={}", userId, hours);
-
-        Long newLikesCount = userNotificationService.getNewLikesCount(userId, hours);
+        Long newLikesCount = userNotificationService.getNewLikesCount(memberId, hours);
 
         Map<String, Object> result = Map.of(
                 "newLikesCount", newLikesCount,
@@ -314,11 +310,9 @@ public class UserNotificationController {
                             .build()
             );
         }
+        log.info("활동 요약 조회: userId={}, hours={}", memberId, hours);
 
-        String userId = memberId+"";
-        log.info("활동 요약 조회: userId={}, hours={}", userId, hours);
-
-        UserActivitySummaryDTO summary = userNotificationService.getActivitySummary(userId, hours);
+        UserActivitySummaryDTO summary = userNotificationService.getActivitySummary(memberId, hours);
 
         return ResponseEntity.ok(
                 CommonApiResponse.<UserActivitySummaryDTO>builder()
@@ -405,11 +399,9 @@ public class UserNotificationController {
                             .build()
             );
         }
+        log.info("새 댓글 알림 목록 조회: userId={}, hours={}", memberId, hours);
 
-        String userId = memberId+"";
-        log.info("새 댓글 알림 목록 조회: userId={}, hours={}", userId, hours);
-
-        List<NewCommentNotificationDTO> notifications = userNotificationService.getNewCommentNotifications(userId, hours, pageRequestDTO);
+        List<NewCommentNotificationDTO> notifications = userNotificationService.getNewCommentNotifications(memberId, hours, pageRequestDTO);
 
         return ResponseEntity.ok(
                 CommonApiResponse.<List<NewCommentNotificationDTO>>builder()
@@ -494,11 +486,9 @@ public class UserNotificationController {
                             .build()
             );
         }
+        log.info("새 좋아요 알림 목록 조회: userId={}, hours={}", memberId, hours);
 
-        String userId = memberId+"";
-        log.info("새 좋아요 알림 목록 조회: userId={}, hours={}", userId, hours);
-
-        List<NewLikeNotificationDTO> notifications = userNotificationService.getNewLikeNotifications(userId, hours, pageRequestDTO);
+        List<NewLikeNotificationDTO> notifications = userNotificationService.getNewLikeNotifications(memberId, hours, pageRequestDTO);
 
         return ResponseEntity.ok(
                 CommonApiResponse.<List<NewLikeNotificationDTO>>builder()
@@ -597,11 +587,9 @@ public class UserNotificationController {
                             .build()
             );
         }
+        log.info("통합 알림 조회: userId={}, hours={}", memberId, hours);
 
-        String userId = memberId+"";
-        log.info("통합 알림 조회: userId={}, hours={}", userId, hours);
-
-        UserNotificationListDTO notifications = userNotificationService.getUserNotifications(userId, hours, pageRequestDTO);
+        UserNotificationListDTO notifications = userNotificationService.getUserNotifications(memberId, hours, pageRequestDTO);
 
         return ResponseEntity.ok(
                 CommonApiResponse.<UserNotificationListDTO>builder()

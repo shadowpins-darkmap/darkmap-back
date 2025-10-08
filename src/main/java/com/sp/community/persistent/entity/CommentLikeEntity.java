@@ -45,7 +45,7 @@ public class CommentLikeEntity {
      * 좋아요를 누른 사용자 ID
      */
     @Column(name = "user_id", nullable = false, length = 50)
-    private String userId;
+    private Long userId;
 
     /**
      * 좋아요를 누른 사용자 닉네임
@@ -109,7 +109,7 @@ public class CommentLikeEntity {
     /**
      * 사용자가 좋아요를 눌렀는지 확인
      */
-    public boolean isLikedByUser(String userId) {
+    public boolean isLikedByUser(Long userId) {
         return this.userId.equals(userId) && this.isActive();
     }
 

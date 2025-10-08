@@ -49,7 +49,7 @@ public class UnauthorizedException extends RuntimeException {
      * @param userId 사용자 ID
      * @return UnauthorizedException 인스턴스
      */
-    public static UnauthorizedException boardEdit(Long boardId, String userId) {
+    public static UnauthorizedException boardEdit(Long boardId, Long userId) {
         return new UnauthorizedException(
                 String.format("게시글을 수정할 권한이 없습니다. 게시글 ID: %d, 사용자 ID: %s", boardId, userId));
     }
@@ -61,7 +61,7 @@ public class UnauthorizedException extends RuntimeException {
      * @param userId 사용자 ID
      * @return UnauthorizedException 인스턴스
      */
-    public static UnauthorizedException boardDelete(Long boardId, String userId) {
+    public static UnauthorizedException boardDelete(Long boardId, Long userId) {
         return new UnauthorizedException(
                 String.format("게시글을 삭제할 권한이 없습니다. 게시글 ID: %d, 사용자 ID: %s", boardId, userId));
     }
@@ -73,7 +73,7 @@ public class UnauthorizedException extends RuntimeException {
      * @param userId 사용자 ID
      * @return UnauthorizedException 인스턴스
      */
-    public static UnauthorizedException commentEdit(Long commentId, String userId) {
+    public static UnauthorizedException commentEdit(Long commentId, Long userId) {
         return new UnauthorizedException(
                 String.format("댓글을 수정할 권한이 없습니다. 댓글 ID: %d, 사용자 ID: %s", commentId, userId));
     }
@@ -85,7 +85,7 @@ public class UnauthorizedException extends RuntimeException {
      * @param userId 사용자 ID
      * @return UnauthorizedException 인스턴스
      */
-    public static UnauthorizedException commentDelete(Long commentId, String userId) {
+    public static UnauthorizedException commentDelete(Long commentId, Long userId) {
         return new UnauthorizedException(
                 String.format("댓글을 삭제할 권한이 없습니다. 댓글 ID: %d, 사용자 ID: %s", commentId, userId));
     }
@@ -143,7 +143,7 @@ public class UnauthorizedException extends RuntimeException {
      * @param userId 사용자 ID
      * @return UnauthorizedException 인스턴스
      */
-    public static UnauthorizedException accountDisabled(String userId) {
+    public static UnauthorizedException accountDisabled(Long userId) {
         return new UnauthorizedException("비활성화된 계정입니다. 사용자 ID: " + userId);
     }
 
@@ -153,7 +153,7 @@ public class UnauthorizedException extends RuntimeException {
      * @param userId 사용자 ID
      * @return UnauthorizedException 인스턴스
      */
-    public static UnauthorizedException accountLocked(String userId) {
+    public static UnauthorizedException accountLocked(Long userId) {
         return new UnauthorizedException("잠금된 계정입니다. 사용자 ID: " + userId);
     }
 

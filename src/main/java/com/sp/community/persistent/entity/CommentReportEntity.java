@@ -46,7 +46,7 @@ public class CommentReportEntity {
      * 신고한 사용자 ID
      */
     @Column(name = "reporter_id", nullable = false, length = 50)
-    private String reporterId;
+    private Long reporterId;
 
     /**
      * 신고 분류

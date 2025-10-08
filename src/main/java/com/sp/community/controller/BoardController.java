@@ -178,7 +178,7 @@ public class BoardController {
                                         "boardId": 1,
                                         "title": "첫 번째 게시글",
                                         "content": "게시글 내용입니다.",
-                                        "authorId": "user123",
+                                        "authorId": 1,
                                         "authorNickname": "사용자123",
                                         "viewCount": 150,
                                         "likeCount": 25,
@@ -278,7 +278,7 @@ public class BoardController {
                                 "boardId": 1,
                                 "title": "게시글 제목",
                                 "content": "게시글 상세 내용입니다.",
-                                "authorId": "user123",
+                                "authorId": 1,
                                 "authorNickname": "사용자123",
                                 "category": "FREE",
                                 "viewCount": 151,
@@ -338,12 +338,11 @@ public class BoardController {
     @GetMapping("/{boardId}")
     public ResponseEntity<CommonApiResponse<BoardDetailVO>> getBoardDetail(
             @Parameter(description = "게시글 ID", required = true, example = "1") @PathVariable Long boardId,
-            @Parameter(hidden = true) @AuthenticationPrincipal UserDetails userDetails) {
+            @Parameter(hidden = true) @AuthenticationPrincipal UserDetails userDetails,
+            @Parameter(hidden = true) @AuthenticationPrincipal Long memberId) {
 
         log.info("게시글 상세 조회: boardId={}", boardId);
-
-        String currentUserId = userDetails != null ? userDetails.getUsername() : null;
-        BoardDetailVO boardDetail = boardService.getBoardDetail(boardId, currentUserId);
+        BoardDetailVO boardDetail = boardService.getBoardDetail(boardId, memberId);
 
         return ResponseEntity.ok(
                 CommonApiResponse.<BoardDetailVO>builder()
@@ -384,7 +383,7 @@ public class BoardController {
                                 "boardId": 1,
                                 "title": "새로운 게시글",
                                 "content": "게시글 내용입니다.",
-                                "authorId": "user123",
+                                "authorId": 1,
                                 "authorNickname": "사용자123",
                                 "category": "FREE",
                                 "viewCount": 0,
@@ -439,7 +438,7 @@ public class BoardController {
         log.info("게시글 생성 요청: title={}, authorId={}", createDTO.getTitle(), createDTO.getAuthorId());
 
         // 현재 사용자 정보 설정
-        createDTO.setAuthorId(memberId+"");
+        createDTO.setAuthorId(memberId);
 
         BoardVO createdBoard = boardService.createBoard(createDTO);
 
@@ -558,7 +557,7 @@ public class BoardController {
         updateDTO.setBoardId(boardId);
 
         // 현재 사용자 정보 설정
-        updateDTO.setEditorId(memberId+"");
+        updateDTO.setEditorId(memberId);
 
         BoardVO updatedBoard = boardService.updateBoard(updateDTO);
 
@@ -632,7 +631,7 @@ public class BoardController {
 
         log.info("게시글 삭제 요청: boardId={}", boardId);
 
-        boardService.deleteBoard(boardId, memberId+"");
+        boardService.deleteBoard(boardId, memberId);
 
         return ResponseEntity.ok(
                 CommonApiResponse.<Void>builder()
@@ -854,7 +853,7 @@ public class BoardController {
             );
         }
 
-        BoardListVO myBoards = boardService.getUserBoards(memberId+"", pageRequestDTO);
+        BoardListVO myBoards = boardService.getUserBoards(memberId, pageRequestDTO);
 
         return ResponseEntity.ok(
                 CommonApiResponse.<BoardListVO>builder()

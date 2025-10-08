@@ -46,7 +46,7 @@ public class BoardReportEntity {
      * 신고한 사용자 ID
      */
     @Column(name = "reporter_id", nullable = false, length = 50)
-    private String reporterId;
+    private Long reporterId;
 
     /**
      * 신고 분류
@@ -79,7 +79,7 @@ public class BoardReportEntity {
      * 신고 처리자 ID
      */
     @Column(name = "processor_id", length = 50)
-    private String processorId;
+    private Long processorId;
 
     /**
      * 신고 생성 일시
@@ -200,7 +200,7 @@ public class BoardReportEntity {
     /**
      * 신고 승인 처리
      */
-    public void approve(String processorId, String result) {
+    public void approve(Long processorId, String result) {
         this.status = ReportStatus.APPROVED;
         this.processorId = processorId;
         this.result = result;
@@ -210,7 +210,7 @@ public class BoardReportEntity {
     /**
      * 신고 거부 처리
      */
-    public void reject(String processorId, String result) {
+    public void reject(Long processorId, String result) {
         this.status = ReportStatus.REJECTED;
         this.processorId = processorId;
         this.result = result;
@@ -228,7 +228,7 @@ public class BoardReportEntity {
     /**
      * 신고 검토 상태로 변경
      */
-    public void startReview(String processorId) {
+    public void startReview(Long processorId) {
         this.status = ReportStatus.REVIEWING;
         this.processorId = processorId;
     }

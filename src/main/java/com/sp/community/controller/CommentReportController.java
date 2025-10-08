@@ -55,12 +55,10 @@ public class CommentReportController {
         }
 
         try {
-            String userId = memberId.toString();
-
             // DTO 생성
             CommentReportCreateDTO createDTO = CommentReportCreateDTO.builder()
                     .commentId(commentId)
-                    .reporterId(userId)
+                    .reporterId(memberId)
                     .reportType(reportType)
                     .reason(reason)
                     .additionalInfo(additionalInfo)
@@ -68,7 +66,7 @@ public class CommentReportController {
                     .build();
 
             log.info("댓글 신고 생성 요청: commentId={}, reportType={}, reporterId={}, hasAttachment={}",
-                    commentId, reportType, userId, attachmentFile != null && !attachmentFile.isEmpty());
+                    commentId, reportType, memberId, attachmentFile != null && !attachmentFile.isEmpty());
 
             CommentReportVO reportVO = commentReportService.createReport(createDTO);
 
@@ -120,15 +118,14 @@ public class CommentReportController {
             @Parameter(description = "댓글 ID", required = true, example = "1") @PathVariable Long commentId,
             @Parameter(hidden = true) @AuthenticationPrincipal Long memberId) {
 
-        String userId = memberId != null ? memberId.toString() : null;
-        boolean hasReported = commentReportService.hasUserReported(commentId, userId);
+        boolean hasReported = commentReportService.hasUserReported(commentId, memberId);
         Long reportCount = commentReportService.getCommentReportCount(commentId);
 
         Map<String, Object> result = Map.of(
                 "commentId", commentId,
                 "hasReported", hasReported,
                 "reportCount", reportCount,
-                "canReport", userId != null && !hasReported
+                "canReport", memberId != null && !hasReported
         );
 
         return ResponseEntity.ok(

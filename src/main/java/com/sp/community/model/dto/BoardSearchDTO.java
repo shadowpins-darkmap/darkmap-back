@@ -47,8 +47,7 @@ public class BoardSearchDTO {
     /**
      * 작성자 ID
      */
-    @Size(max = 50, message = "작성자 ID는 50자 이하로 입력해주세요.")
-    private String authorId;
+    private Long authorId;
 
     /**
      * 작성자 닉네임
@@ -212,16 +211,6 @@ public class BoardSearchDTO {
     }
 
     /**
-     * 정리된 작성자 ID 반환
-     */
-    public String getTrimmedAuthorId() {
-        if (authorId == null || authorId.trim().isEmpty()) {
-            return null;
-        }
-        return authorId.trim();
-    }
-
-    /**
      * 정리된 작성자 닉네임 반환
      */
     public String getTrimmedAuthorNickname() {
@@ -237,7 +226,7 @@ public class BoardSearchDTO {
     public boolean hasSearchConditions() {
         return hasKeyword() ||
                 getNormalizedCategory() != null ||
-                getTrimmedAuthorId() != null ||
+                authorId != null ||
                 getTrimmedAuthorNickname() != null ||
                 hasDateRange() ||
                 isNotice != null ||

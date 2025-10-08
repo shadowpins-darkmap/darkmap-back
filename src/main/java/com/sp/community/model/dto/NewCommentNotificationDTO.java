@@ -29,7 +29,7 @@ public class NewCommentNotificationDTO {
     private String content;
 
     @Schema(description = "댓글 작성자 ID", example = "user456")
-    private String commenterUserId;
+    private Long commenterUserId;
 
     @Schema(description = "댓글 작성자 닉네임", example = "댓글러456")
     private String commenterNickname;

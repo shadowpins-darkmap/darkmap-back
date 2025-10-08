@@ -9,6 +9,7 @@ import com.sp.community.persistent.entity.BoardLikeEntity;
 import com.sp.community.persistent.repository.BoardLikeRepository;
 import com.sp.community.persistent.repository.BoardRepository;
 import com.sp.community.model.response.FileUploadResponse;
+import com.sp.member.persistent.repository.MemberRepository;
 import lombok.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -33,17 +34,18 @@ public class BoardLikeService {
 
     private final BoardLikeRepository boardLikeRepository;
     private final BoardRepository boardRepository;
+    private final MemberRepository memberRepository;
     private final FileService fileService;
 
     /**
      * 게시글 좋아요 추가
      */
     @Transactional
-    public boolean addLike(Long boardId, String userId, String userNickname) {
+    public boolean addLike(Long boardId, Long userId) {
         log.info("게시글 좋아요 추가: boardId={}, userId={}", boardId, userId);
 
         // 입력값 검증
-        validateInput(boardId, userId, userNickname);
+        validateInput(boardId, userId);
 
         // 게시글 존재 확인
         BoardEntity boardEntity = boardRepository.findByIdAndNotDeleted(boardId)
@@ -82,7 +84,6 @@ public class BoardLikeService {
         BoardLikeEntity newLike = BoardLikeEntity.builder()
                 .board(boardEntity)
                 .userId(userId)
-                .userNickname(userNickname)
                 .build();
 
         boardLikeRepository.save(newLike);
@@ -98,11 +99,11 @@ public class BoardLikeService {
      * 게시글 좋아요 취소
      */
     @Transactional
-    public boolean removeLike(Long boardId, String userId) {
+    public boolean removeLike(Long boardId, Long userId) {
         log.info("게시글 좋아요 취소: boardId={}, userId={}", boardId, userId);
 
         // 입력값 검증
-        if (boardId == null || !StringUtils.hasText(userId)) {
+        if (boardId == null) {
             throw new IllegalArgumentException("필수 파라미터가 누락되었습니다.");
         }
 
@@ -136,7 +137,7 @@ public class BoardLikeService {
      * 좋아요 토글 (추가/취소)
      */
     @Transactional
-    public boolean toggleLike(Long boardId, String userId, String userNickname) {
+    public boolean toggleLike(Long boardId, Long userId) {
         log.debug("좋아요 토글: boardId={}, userId={}", boardId, userId);
 
         boolean hasLiked = hasUserLiked(boardId, userId);
@@ -144,15 +145,15 @@ public class BoardLikeService {
         if (hasLiked) {
             return !removeLike(boardId, userId); // 취소하면 false 반환
         } else {
-            return addLike(boardId, userId, userNickname); // 추가하면 true 반환
+            return addLike(boardId, userId); // 추가하면 true 반환
         }
     }
 
     /**
      * 사용자가 게시글을 좋아요했는지 확인
      */
-    public boolean hasUserLiked(Long boardId, String userId) {
-        if (boardId == null || !StringUtils.hasText(userId)) {
+    public boolean hasUserLiked(Long boardId, Long userId) {
+        if (boardId == null) {
             return false;
         }
 
@@ -173,10 +174,9 @@ public class BoardLikeService {
     /**
      * 특정 사용자가 좋아요한 게시글 목록 조회
      */
-    public List<BoardVO> getUserLikedBoards(String userId, PageRequestDTO pageRequestDTO) {
+    public List<BoardVO> getUserLikedBoards(Long userId, PageRequestDTO pageRequestDTO) {
         log.debug("사용자 좋아요 게시글 조회: userId={}", userId);
-
-        if (!StringUtils.hasText(userId)) {
+        if (userId == null) {
             return List.of();
         }
 
@@ -270,17 +270,25 @@ public class BoardLikeService {
     /**
      * 입력값 검증
      */
-    private void validateInput(Long boardId, String userId, String userNickname) {
+    private void validateInput(Long boardId, Long userId) {
         if (boardId == null) {
             throw new IllegalArgumentException("게시글 ID는 필수입니다.");
         }
 
-        if (!StringUtils.hasText(userId)) {
+        if (userId == null) {
             throw new IllegalArgumentException("사용자 ID는 필수입니다.");
         }
-
-        if (!StringUtils.hasText(userNickname)) {
-            throw new IllegalArgumentException("사용자 닉네임은 필수입니다.");
+    }
+    /**
+     * 사용자 닉네임 조회 헬퍼 메서드
+     */
+    private String getAuthorNickname(Long authorId) {
+        try {
+            return memberRepository.findNicknameByMemberId(authorId)
+                    .orElse(authorId.toString());
+        } catch (Exception e) {
+            log.warn("닉네임 조회 실패: authorId={}", authorId);
+            return authorId.toString();
         }
     }
 
@@ -296,7 +304,7 @@ public class BoardLikeService {
                 .title(entity.getTitle())
                 .authorId(entity.getAuthorId())
                 .content(entity.getContent())
-                .authorNickname(entity.getAuthorNickname())
+                .authorNickname(getAuthorNickname(entity.getAuthorId()))
                 .category(entity.getCategory())
                 .viewCount(entity.getViewCount())
                 .likeCount(entity.getLikeCount())

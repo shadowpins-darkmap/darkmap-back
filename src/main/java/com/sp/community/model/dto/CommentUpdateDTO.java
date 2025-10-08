@@ -37,8 +37,7 @@ public class CommentUpdateDTO {
     /**
      * 작성자 ID
      */
-    @Size(max = 50, message = "")
-    private String authorId;
+    private Long authorId;
 
     /**
      * 댓글 내용 정리 (앞뒤 공백 제거)

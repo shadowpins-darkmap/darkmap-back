@@ -31,7 +31,7 @@ public interface CommentRepository extends JpaRepository<CommentEntity, Long> {
         AND c.isDeleted = false 
         AND b.isDeleted = false
         """)
-    Long countNewCommentsOnUserBoards(@Param("authorId") String authorId,
+    Long countNewCommentsOnUserBoards(@Param("authorId") Long authorId,
                                       @Param("since") LocalDateTime since);
 
     /**
@@ -47,7 +47,7 @@ public interface CommentRepository extends JpaRepository<CommentEntity, Long> {
         AND b.isDeleted = false 
         ORDER BY c.createdAt DESC
         """)
-    Page<CommentEntity> findNewCommentsOnUserBoards(@Param("authorId") String authorId,
+    Page<CommentEntity> findNewCommentsOnUserBoards(@Param("authorId") Long authorId,
                                                     @Param("since") LocalDateTime since,
                                                     Pageable pageable);
 
@@ -61,7 +61,7 @@ public interface CommentRepository extends JpaRepository<CommentEntity, Long> {
      * 작성자별 댓글 목록 조회
      */
     @Query("SELECT c FROM CommentEntity c WHERE c.authorId = :authorId AND c.isDeleted = false AND c.isHidden = false ORDER BY c.createdAt DESC")
-    Page<CommentEntity> findByAuthorIdAndVisible(@Param("authorId") String authorId, Pageable pageable);
+    Page<CommentEntity> findByAuthorIdAndVisible(@Param("authorId") Long authorId, Pageable pageable);
 
     /**
      * 특정 게시글의 댓글 수 조회 (보이는 댓글만)
@@ -121,7 +121,7 @@ public interface CommentRepository extends JpaRepository<CommentEntity, Long> {
      * 작성자별 댓글 수 조회
      */
     @Query("SELECT COUNT(c) FROM CommentEntity c WHERE c.authorId = :authorId AND c.isDeleted = false")
-    Long countByAuthorIdAndNotDeleted(@Param("authorId") String authorId);
+    Long countByAuthorIdAndNotDeleted(@Param("authorId") Long authorId);
 
     /**
      * 오늘 작성된 댓글 수 조회

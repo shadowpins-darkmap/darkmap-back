@@ -12,7 +12,7 @@ public class MemberInfoResponse {
 
     private String email;
     private String nickname;
-    private String memberId; // KAKAO_12345, GOOGLE_12345
+    private String memberId;
     private String level;
     private String type;
     private int loginCount;
@@ -24,7 +24,7 @@ public class MemberInfoResponse {
         return MemberInfoResponse.builder()
                 .email(member.getEmail())
                 .nickname(member.getNickname())
-                .memberId(member.getMemberId())
+                .memberId(member.getId().toString()) // seq id
                 .type(member.getType().toString())
                 .level(member.getLevel())
                 .loginCount(member.getLoginCount())

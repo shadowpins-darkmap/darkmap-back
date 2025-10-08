@@ -160,7 +160,7 @@ public class BoardNotFoundException extends RuntimeException {
      * @param userId 사용자 ID
      * @return BoardNotFoundException 인스턴스
      */
-    public static BoardNotFoundException noBoardsByUser(String userId) {
+    public static BoardNotFoundException noBoardsByUser(Long userId) {
         return new BoardNotFoundException("해당 사용자의 게시글이 없습니다. 사용자 ID: " + userId);
     }
 

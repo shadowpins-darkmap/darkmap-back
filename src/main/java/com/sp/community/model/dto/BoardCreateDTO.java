@@ -45,9 +45,7 @@ public class BoardCreateDTO {
      * 작성자 ID
      */
     @Schema(hidden = true)
-    @Size(max = 50, message = "")
-    private String authorId;
-
+    private Long authorId;
 
     @Schema(description = "작성자 닉네임", example = "사용자123")
     @Size(max = 50, message = "")
@@ -308,7 +306,7 @@ public class BoardCreateDTO {
     private void validateNoticePermission() {
         // 실제 구현에서는 사용자의 권한을 확인해야 함
         // 여기서는 기본적인 검증만 수행
-        if (authorId == null || authorId.trim().isEmpty()) {
+        if (authorId == null) {
             throw new IllegalArgumentException("공지사항 등록 권한이 없습니다.");
         }
 

@@ -1,6 +1,7 @@
 package com.sp.community.model.dto;
 
 import com.sp.community.persistent.entity.BoardReportEntity;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -30,8 +31,7 @@ public class BoardReportCreateDTO {
     /**
      * 신고자 ID
      */
-    @Size(max = 50, message = "신고자 ID는 50자 이하로 입력해주세요.")
-    private String reporterId;
+    private Long reporterId;
 
     /**
      * 신고 분류

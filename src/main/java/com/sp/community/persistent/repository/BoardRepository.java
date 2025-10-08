@@ -47,7 +47,7 @@ public interface BoardRepository extends JpaRepository<BoardEntity, Long> {
      * 작성자별 게시글 목록 조회
      */
     @Query("SELECT b FROM BoardEntity b WHERE b.authorId = :authorId AND b.isDeleted = false ORDER BY b.createdAt DESC")
-    Page<BoardEntity> findByAuthorIdAndNotDeleted(@Param("authorId") String authorId, Pageable pageable);
+    Page<BoardEntity> findByAuthorIdAndNotDeleted(@Param("authorId") Long authorId, Pageable pageable);
 
     /**
      * 제목으로 게시글 검색
@@ -68,9 +68,13 @@ public interface BoardRepository extends JpaRepository<BoardEntity, Long> {
     Page<BoardEntity> findByTitleOrContentContainingAndNotDeleted(@Param("keyword") String keyword, Pageable pageable);
 
     /**
-     * 작성자 닉네임으로 게시글 검색
+     * 작성자 닉네임으로 게시글 검색 (Member 테이블 조인)
      */
-    @Query("SELECT b FROM BoardEntity b WHERE b.authorNickname LIKE %:nickname% AND b.isDeleted = false ORDER BY b.createdAt DESC")
+    @Query("SELECT b FROM BoardEntity b " +
+            "JOIN Member m ON b.authorId = m.id " +
+            "WHERE m.nickname LIKE %:nickname% " +
+            "AND b.isDeleted = false " +
+            "ORDER BY b.createdAt DESC")
     Page<BoardEntity> findByAuthorNicknameContainingAndNotDeleted(@Param("nickname") String nickname, Pageable pageable);
 
     /**
@@ -149,7 +153,7 @@ public interface BoardRepository extends JpaRepository<BoardEntity, Long> {
      * 작성자별 게시글 수 조회
      */
     @Query("SELECT COUNT(b) FROM BoardEntity b WHERE b.authorId = :authorId AND b.isDeleted = false")
-    Long countByAuthorIdAndNotDeleted(@Param("authorId") String authorId);
+    Long countByAuthorIdAndNotDeleted(@Param("authorId") Long authorId);
 
     /**
      * 특정 유저가 작성한 승인된 제보글 개수 조회
@@ -159,7 +163,7 @@ public interface BoardRepository extends JpaRepository<BoardEntity, Long> {
             "AND b.category = :category " +
             "AND b.reportApproved = true " +
             "AND b.isDeleted = false")
-    Long countApprovedReportsByAuthor(@Param("authorId") String authorId,
+    Long countApprovedReportsByAuthor(@Param("authorId") Long authorId,
                                       @Param("category") String category);
 
     /**
@@ -183,7 +187,7 @@ public interface BoardRepository extends JpaRepository<BoardEntity, Long> {
             "AND bl.isDeleted = false " +
             "AND b.isDeleted = false " +
             "ORDER BY bl.createdAt DESC")
-    Page<BoardEntity> findBoardsLikedByUser(@Param("userId") String userId, Pageable pageable);
+    Page<BoardEntity> findBoardsLikedByUser(@Param("userId") Long userId, Pageable pageable);
 
     /**
      * 좋아요가 많은 상위 게시글 조회 (제한된 개수)
@@ -215,7 +219,7 @@ public interface BoardRepository extends JpaRepository<BoardEntity, Long> {
             "ORDER BY b.createdAt DESC")
     Page<BoardEntity> findBySearchConditions(
             @Param("keyword") String keyword,
-            @Param("authorId") String authorId,
+            @Param("authorId") Long authorId,
             @Param("startDate") LocalDateTime startDate,
             @Param("endDate") LocalDateTime endDate,
             Pageable pageable

@@ -61,7 +61,7 @@ public class EmailService {
 
             // 신고자 닉네임 조회
             String reporterNickname = memberRepository.findNicknameByMemberId(createDTO.getReporterId())
-                    .orElse(createDTO.getReporterId());
+                    .orElse(createDTO.getReporterId().toString());
 
             // 이메일 발송
             ReportEmailDto reportDto = createBoardReportEmailDto(
@@ -208,7 +208,7 @@ public class EmailService {
             String reporterNickname = "알 수 없음";
             try {
                 reporterNickname = memberRepository.findNicknameByMemberId(createDTO.getReporterId())
-                        .orElse(createDTO.getReporterId());
+                        .orElse(createDTO.getReporterId().toString());
             } catch (Exception e) {
                 log.warn("신고자 닉네임 조회 실패: reporterId={}", createDTO.getReporterId());
             }
@@ -239,8 +239,8 @@ public class EmailService {
                 .commentId(commentId)
                 .boardId(0L)
                 .commentContent("댓글 정보 조회 실패")
-                .commentAuthorId("unknown")
-                .commentAuthorNickname("알 수 없음")
+                .commentAuthorId(1L)
+                //.commentAuthorNickname("알 수 없음")
                 .commentCreatedAt(LocalDateTime.now())
                 .boardTitle("게시글 정보 없음")
                 .boardCategory("UNKNOWN")

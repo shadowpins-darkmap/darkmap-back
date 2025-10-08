@@ -23,7 +23,7 @@ public interface BoardReportRepository extends JpaRepository<BoardReportEntity, 
      * 특정 게시글의 특정 사용자 신고 조회
      */
     @Query("SELECT br FROM BoardReportEntity br WHERE br.board.boardId = :boardId AND br.reporterId = :reporterId")
-    Optional<BoardReportEntity> findByBoardIdAndReporterId(@Param("boardId") Long boardId, @Param("reporterId") String reporterId);
+    Optional<BoardReportEntity> findByBoardIdAndReporterId(@Param("boardId") Long boardId, @Param("reporterId") Long reporterId);
 
     /**
      * 특정 게시글의 신고 목록 조회
@@ -35,7 +35,7 @@ public interface BoardReportRepository extends JpaRepository<BoardReportEntity, 
      * 특정 사용자가 신고한 목록 조회
      */
     @Query("SELECT br FROM BoardReportEntity br WHERE br.reporterId = :reporterId ORDER BY br.createdAt DESC")
-    Page<BoardReportEntity> findByReporterId(@Param("reporterId") String reporterId, Pageable pageable);
+    Page<BoardReportEntity> findByReporterId(@Param("reporterId") Long reporterId, Pageable pageable);
 
     /**
      * 신고 상태별 조회
@@ -89,7 +89,7 @@ public interface BoardReportRepository extends JpaRepository<BoardReportEntity, 
      * 사용자가 이미 신고했는지 확인
      */
     @Query("SELECT COUNT(br) > 0 FROM BoardReportEntity br WHERE br.board.boardId = :boardId AND br.reporterId = :reporterId")
-    boolean existsByBoardIdAndReporterId(@Param("boardId") Long boardId, @Param("reporterId") String reporterId);
+    boolean existsByBoardIdAndReporterId(@Param("boardId") Long boardId, @Param("reporterId") Long reporterId);
 
     /**
      * 특정 기간 내 신고 조회
@@ -168,8 +168,8 @@ public interface BoardReportRepository extends JpaRepository<BoardReportEntity, 
     Page<BoardReportEntity> findBySearchConditions(
             @Param("reportType") BoardReportEntity.ReportType reportType,
             @Param("status") BoardReportEntity.ReportStatus status,
-            @Param("reporterId") String reporterId,
-            @Param("processorId") String processorId,
+            @Param("reporterId") Long reporterId,
+            @Param("processorId") Long processorId,
             @Param("startDate") LocalDateTime startDate,
             @Param("endDate") LocalDateTime endDate,
             Pageable pageable
@@ -211,7 +211,7 @@ public interface BoardReportRepository extends JpaRepository<BoardReportEntity, 
      * 특정 신고자의 신고 통계
      */
     @Query("SELECT br.status, COUNT(br) FROM BoardReportEntity br WHERE br.reporterId = :reporterId GROUP BY br.status")
-    List<Object[]> findReporterStatistics(@Param("reporterId") String reporterId);
+    List<Object[]> findReporterStatistics(@Param("reporterId") Long reporterId);
 
     /**
      * 최근 신고 목록 조회 (관리자 대시보드용)

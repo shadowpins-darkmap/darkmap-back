@@ -17,7 +17,7 @@ public class CommentReportInfoDto {
     private Long commentId;
     private Long boardId;
     private String commentContent;
-    private String commentAuthorId;
+    private Long commentAuthorId;
     private String commentAuthorNickname;
     private LocalDateTime commentCreatedAt;
     private Boolean isCommentReported;
@@ -39,7 +39,7 @@ public class CommentReportInfoDto {
         if (commentAuthorNickname != null && !commentAuthorNickname.trim().isEmpty()) {
             return commentAuthorNickname;
         }
-        return commentAuthorId != null ? commentAuthorId : "알 수 없음";
+        return commentAuthorId != null ? commentAuthorId.toString() : "알 수 없음";
     }
 
     /**

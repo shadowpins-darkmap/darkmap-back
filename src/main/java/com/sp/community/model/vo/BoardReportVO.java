@@ -40,7 +40,7 @@ public class BoardReportVO {
     /**
      * 신고자 ID
      */
-    private String reporterId;
+    private Long reporterId;
 
     /**
      * 신고 분류
@@ -75,7 +75,7 @@ public class BoardReportVO {
     /**
      * 신고 처리자 ID
      */
-    private String processorId;
+    private Long processorId;
 
     /**
      * 신고 생성 일시

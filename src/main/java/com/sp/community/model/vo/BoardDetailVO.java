@@ -39,7 +39,7 @@ public class BoardDetailVO {
     /**
      * 작성자 ID
      */
-    private String authorId;
+    private Long authorId;
 
     /**
      * 작성자 닉네임
@@ -285,7 +285,7 @@ public class BoardDetailVO {
     /**
      * 게시글 접근 권한 확인
      */
-    public boolean canAccess(String currentUserId, boolean isAdmin) {
+    public boolean canAccess(Long currentUserId, boolean isAdmin) {
         // 관리자는 모든 게시글 접근 가능
         if (isAdmin) {
             return true;
@@ -302,7 +302,7 @@ public class BoardDetailVO {
     /**
      * 게시글 수정 권한 확인
      */
-    public boolean canEdit(String currentUserId, boolean isAdmin) {
+    public boolean canEdit(Long currentUserId, boolean isAdmin) {
         if (isAdmin) {
             return true;
         }
@@ -313,7 +313,7 @@ public class BoardDetailVO {
     /**
      * 게시글 삭제 권한 확인
      */
-    public boolean canDelete(String currentUserId, boolean isAdmin) {
+    public boolean canDelete(Long currentUserId, boolean isAdmin) {
         if (isAdmin) {
             return true;
         }
@@ -324,9 +324,9 @@ public class BoardDetailVO {
     /**
      * 좋아요 가능 여부 확인
      */
-    public boolean canLike(String currentUserId) {
+    public boolean canLike(Long currentUserId) {
         // 로그인한 사용자만 좋아요 가능
-        if (currentUserId == null || currentUserId.trim().isEmpty()) {
+        if (currentUserId == null) {
             return false;
         }
 
@@ -337,14 +337,14 @@ public class BoardDetailVO {
     /**
      * 댓글 작성 가능 여부 확인
      */
-    public boolean canComment(String currentUserId) {
+    public boolean canComment(Long currentUserId) {
         // 댓글이 허용되지 않은 경우
         if (!Boolean.TRUE.equals(allowComments)) {
             return false;
         }
 
         // 로그인한 사용자만 댓글 작성 가능
-        if (currentUserId == null || currentUserId.trim().isEmpty()) {
+        if (currentUserId == null) {
             return false;
         }
 
@@ -359,7 +359,7 @@ public class BoardDetailVO {
     /**
      * 특정 사용자가 작성자인지 확인
      */
-    public boolean isAuthorOf(String userId) {
+    public boolean isAuthorOf(Long userId) {
         return authorId != null && authorId.equals(userId);
     }
 
@@ -404,7 +404,7 @@ public class BoardDetailVO {
         if (authorNickname != null && !authorNickname.trim().isEmpty()) {
             return authorNickname;
         }
-        return authorId != null ? authorId : "알 수 없음";
+        return authorId != null ? authorId.toString() : "알 수 없음";
     }
 
     /**

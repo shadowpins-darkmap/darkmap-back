@@ -27,11 +27,11 @@ public class BoardEntity {
     @Column(name = "content", nullable = false, columnDefinition = "TEXT")
     private String content;
 
-    @Column(name = "author_id", nullable = false, length = 50)
-    private String authorId;
+    @Column(name = "author_id", nullable = false)
+    private Long authorId;
 
-    @Column(name = "author_nickname", nullable = false, length = 50)
-    private String authorNickname;
+    //@Column(name = "author_nickname", nullable = false, length = 50)
+    //private String authorNickname;
 
     @Column(name = "category", nullable = false, length = 50)
     private String category;
@@ -467,7 +467,7 @@ public class BoardEntity {
     /**
      * 특정 사용자가 작성한 게시글인지 확인
      */
-    public boolean isAuthor(String userId) {
+    public boolean isAuthor(Long userId) {
         return this.authorId != null && this.authorId.equals(userId);
     }
 

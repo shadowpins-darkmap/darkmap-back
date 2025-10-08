@@ -161,12 +161,9 @@ public class BoardLikeController {
             );
         }
 
-        String userId = memberId+"";
-        String userNickname = userId;
+        log.info("좋아요 토글 요청: boardId={}, userId={}", boardId, memberId);
 
-        log.info("좋아요 토글 요청: boardId={}, userId={}", boardId, userId);
-
-        boolean isLiked = boardLikeService.toggleLike(boardId, userId, userNickname);
+        boolean isLiked = boardLikeService.toggleLike(boardId, memberId);
         Long likeCount = boardLikeService.getLikeCount(boardId);
 
         LikeToggleResponse response = LikeToggleResponse.builder()
@@ -273,16 +270,14 @@ public class BoardLikeController {
             @Parameter(description = "게시글 ID", required = true, example = "1") @PathVariable Long boardId,
             @Parameter(hidden = true) @AuthenticationPrincipal Long memberId) {
 
-        String userId = memberId != null ? memberId+"" : null;
-
-        boolean isLiked = boardLikeService.hasUserLiked(boardId, userId);
+        boolean isLiked = boardLikeService.hasUserLiked(boardId, memberId);
         Long likeCount = boardLikeService.getLikeCount(boardId);
 
         LikeStatusResponse response = LikeStatusResponse.builder()
                 .boardId(boardId)
                 .isLiked(isLiked)
                 .likeCount(likeCount)
-                .canLike(userId != null)
+                .canLike(memberId != null)
                 .build();
 
         return ResponseEntity.ok(
@@ -317,7 +312,7 @@ public class BoardLikeController {
                                     "boardId": 1,
                                     "title": "내가 좋아요한 첫 번째 게시글",
                                     "content": "정말 유용한 게시글이었습니다.",
-                                    "authorId": "user456",
+                                    "authorId": 1,
                                     "authorNickname": "다른사용자456",
                                     "viewCount": 250,
                                     "likeCount": 45,
@@ -330,7 +325,7 @@ public class BoardLikeController {
                                     "boardId": 5,
                                     "title": "내가 좋아요한 두 번째 게시글",
                                     "content": "매우 흥미로운 내용입니다.",
-                                    "authorId": "user789",
+                                    "authorId": 1,
                                     "authorNickname": "다른사용자789",
                                     "viewCount": 180,
                                     "likeCount": 32,
@@ -376,10 +371,8 @@ public class BoardLikeController {
             );
         }
 
-        String userId = memberId+"";
-        log.info("좋아요한 게시글 조회: userId={}", userId);
-
-        List<BoardVO> likedBoards = boardLikeService.getUserLikedBoards(userId, pageRequestDTO);
+        log.info("좋아요한 게시글 조회: userId={}", memberId);
+        List<BoardVO> likedBoards = boardLikeService.getUserLikedBoards(memberId, pageRequestDTO);
 
         return ResponseEntity.ok(
                 CommonApiResponse.<List<BoardVO>>builder()
@@ -413,7 +406,7 @@ public class BoardLikeController {
                                     "boardId": 3,
                                     "title": "가장 인기 있는 게시글",
                                     "content": "많은 사람들이 좋아하는 게시글입니다.",
-                                    "authorId": "user123",
+                                    "authorId": 1,
                                     "authorNickname": "인기작성자123",
                                     "viewCount": 1500,
                                     "likeCount": 89,

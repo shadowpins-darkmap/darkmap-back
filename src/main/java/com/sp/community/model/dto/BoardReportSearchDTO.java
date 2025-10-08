@@ -30,12 +30,12 @@ public class BoardReportSearchDTO {
     /**
      * 신고자 ID
      */
-    private String reporterId;
+    private Long reporterId;
 
     /**
      * 처리자 ID
      */
-    private String processorId;
+    private Long processorId;
 
     /**
      * 검색 시작 날짜
@@ -117,8 +117,8 @@ public class BoardReportSearchDTO {
     public boolean hasSearchConditions() {
         return reportType != null ||
                 status != null ||
-                (reporterId != null && !reporterId.trim().isEmpty()) ||
-                (processorId != null && !processorId.trim().isEmpty()) ||
+                reporterId != null ||
+                processorId != null ||
                 startDate != null ||
                 endDate != null ||
                 boardId != null ||

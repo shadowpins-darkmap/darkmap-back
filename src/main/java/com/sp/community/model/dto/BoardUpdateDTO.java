@@ -48,8 +48,7 @@ public class BoardUpdateDTO {
     /**
      * 수정자 ID (작성자와 동일해야 함)
      */
-    @Size(max = 50, message = "수정자 ID는 50자 이하로 입력해주세요.")
-    private String editorId;
+    private Long editorId;
 
     /**
      * 새로 추가할 이미지 파일 (기존 이미지를 교체)
@@ -365,7 +364,7 @@ public class BoardUpdateDTO {
      * 공지사항 수정 권한 검증
      */
     private void validateNoticePermission() {
-        if (editorId == null || editorId.trim().isEmpty()) {
+        if (editorId == null) {
             throw new IllegalArgumentException("공지사항 수정 권한이 없습니다.");
         }
 

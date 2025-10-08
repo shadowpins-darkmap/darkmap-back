@@ -23,13 +23,13 @@ public interface CommentLikeRepository extends JpaRepository<CommentLikeEntity, 
      * 특정 댓글의 특정 사용자 좋아요 조회 (활성 상태)
      */
     @Query("SELECT cl FROM CommentLikeEntity cl WHERE cl.comment.commentId = :commentId AND cl.userId = :userId AND cl.isDeleted = false")
-    Optional<CommentLikeEntity> findByCommentIdAndUserIdAndNotDeleted(@Param("commentId") Long commentId, @Param("userId") String userId);
+    Optional<CommentLikeEntity> findByCommentIdAndUserIdAndNotDeleted(@Param("commentId") Long commentId, @Param("userId") Long userId);
 
     /**
      * 특정 댓글의 특정 사용자 좋아요 조회 (삭제된 것 포함)
      */
     @Query("SELECT cl FROM CommentLikeEntity cl WHERE cl.comment.commentId = :commentId AND cl.userId = :userId")
-    Optional<CommentLikeEntity> findByCommentIdAndUserId(@Param("commentId") Long commentId, @Param("userId") String userId);
+    Optional<CommentLikeEntity> findByCommentIdAndUserId(@Param("commentId") Long commentId, @Param("userId") Long userId);
 
     /**
      * 특정 댓글의 좋아요 수 조회 (활성 상태만)
@@ -47,5 +47,5 @@ public interface CommentLikeRepository extends JpaRepository<CommentLikeEntity, 
      * 특정 사용자가 좋아요한 댓글 목록 조회 (활성 상태)
      */
     @Query("SELECT cl FROM CommentLikeEntity cl WHERE cl.userId = :userId AND cl.isDeleted = false ORDER BY cl.createdAt DESC")
-    Page<CommentLikeEntity> findByUserIdAndNotDeleted(@Param("userId") String userId, Pageable pageable);
+    Page<CommentLikeEntity> findByUserIdAndNotDeleted(@Param("userId") Long userId, Pageable pageable);
 }

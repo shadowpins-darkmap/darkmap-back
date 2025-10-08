@@ -76,7 +76,7 @@ public class CommentController {
                                 "commentId": 1,
                                 "boardId": 1,
                                 "content": "좋은 게시글이네요! 감사합니다.",
-                                "authorId": "user123",
+                                "authorId": 1,
                                 "authorNickname": "사용자123",
                                 "likeCount": 0,
                                 "createdAt": "2024-01-15 10:30:00",
@@ -151,12 +151,8 @@ public class CommentController {
             );
         }
 
-        String userId = memberId+"";
-        String userNickname = userId; // 임시로 ID를 닉네임으로 사용
-
-        log.info("댓글 생성 요청: boardId={}, authorId={}", createDTO.getBoardId(), userId);
-
-        CommentVO createdComment = commentService.createComment(createDTO, userId);
+        log.info("댓글 생성 요청: boardId={}, authorId={}", createDTO.getBoardId(), memberId);
+        CommentVO createdComment = commentService.createComment(createDTO, memberId);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(
                 CommonApiResponse.<CommentVO>builder()
@@ -298,11 +294,10 @@ public class CommentController {
             );
         }
 
-        String userId = memberId+"";
         updateDTO.setCommentId(commentId);
-        updateDTO.setAuthorId(userId); // 권한 확인을 위해 추가
+        updateDTO.setAuthorId(memberId); // 권한 확인을 위해 추가
 
-        log.info("댓글 수정 요청: commentId={}, editorId={}", commentId, userId);
+        log.info("댓글 수정 요청: commentId={}, editorId={}", commentId, memberId);
 
         CommentVO updatedComment = commentService.updateComment(updateDTO);
 
@@ -397,11 +392,8 @@ public class CommentController {
                             .build()
             );
         }
-
-        String userId = memberId+"";
-        log.info("댓글 삭제 요청: commentId={}, userId={}", commentId, userId);
-
-        commentService.deleteComment(commentId, userId);
+        log.info("댓글 삭제 요청: commentId={}, userId={}", commentId, memberId);
+        commentService.deleteComment(commentId, memberId);
 
         return ResponseEntity.ok(
                 CommonApiResponse.<Void>builder()
@@ -470,11 +462,9 @@ public class CommentController {
             @Parameter(description = "게시글 ID", required = true, example = "1") @PathVariable Long boardId,
             @Parameter(description = "페이징 정보") @ModelAttribute PageRequestDTO pageRequestDTO,
             @Parameter(hidden = true) @AuthenticationPrincipal Long memberId) {
-
-        String currentUserId = memberId != null ? memberId+"" : null;
         log.debug("게시글 댓글 목록 조회: boardId={}", boardId);
 
-        List<CommentVO> comments = commentService.getBoardComments(boardId, currentUserId, pageRequestDTO);
+        List<CommentVO> comments = commentService.getBoardComments(boardId, memberId, pageRequestDTO);
 
         return ResponseEntity.ok(
                 CommonApiResponse.<List<CommentVO>>builder()
@@ -524,14 +514,12 @@ public class CommentController {
     })
     @GetMapping("/user/{authorId}")
     public ResponseEntity<CommonApiResponse<List<CommentVO>>> getUserComments(
-            @Parameter(description = "작성자 ID", required = true, example = "user123") @PathVariable String authorId,
+            @Parameter(description = "작성자 ID", required = true, example = "1") @PathVariable Long authorId,
             @Parameter(description = "페이징 정보") @ModelAttribute PageRequestDTO pageRequestDTO,
             @Parameter(hidden = true) @AuthenticationPrincipal Long memberId) {
 
-        String currentUserId = memberId != null ? memberId+"" : null;
         log.debug("사용자 댓글 목록 조회: authorId={}", authorId);
-
-        List<CommentVO> comments = commentService.getUserComments(authorId, currentUserId, pageRequestDTO);
+        List<CommentVO> comments = commentService.getUserComments(authorId, memberId, pageRequestDTO);
 
         return ResponseEntity.ok(
                 CommonApiResponse.<List<CommentVO>>builder()
@@ -597,6 +585,7 @@ public class CommentController {
     })
     @GetMapping("/my")
     public ResponseEntity<CommonApiResponse<List<CommentVO>>> getMyComments(
+            @Parameter(description = "작성자 ID", required = true, example = "1") @PathVariable Long authorId,
             @Parameter(description = "페이징 정보") @ModelAttribute PageRequestDTO pageRequestDTO,
             @Parameter(hidden = true) @AuthenticationPrincipal Long memberId) {
 
@@ -608,11 +597,8 @@ public class CommentController {
                             .build()
             );
         }
-
-        String userId = memberId+"";
-        log.debug("내 댓글 목록 조회: userId={}", userId);
-
-        List<CommentVO> comments = commentService.getUserComments(userId, userId, pageRequestDTO);
+        log.debug("사용자 댓글 목록 조회: authorId={}", authorId);
+        List<CommentVO> comments = commentService.getUserComments(authorId, memberId, pageRequestDTO);
 
         return ResponseEntity.ok(
                 CommonApiResponse.<List<CommentVO>>builder()
@@ -746,13 +732,9 @@ public class CommentController {
                             .build()
             );
         }
+        log.info("댓글 좋아요 토글 요청: commentId={}, userId={}", commentId, memberId);
 
-        String userId = memberId+"";
-        String userNickname = userId; // 임시로 ID를 닉네임으로 사용
-
-        log.info("댓글 좋아요 토글 요청: commentId={}, userId={}", commentId, userId);
-
-        boolean isLiked = commentService.toggleCommentLike(commentId, userId, userNickname);
+        boolean isLiked = commentService.toggleCommentLike(commentId, memberId);
         Long likeCount = commentService.getCommentLikeCount(commentId);
 
         CommentLikeResponse response = CommentLikeResponse.builder()
@@ -823,16 +805,14 @@ public class CommentController {
             @Parameter(description = "댓글 ID", required = true, example = "1") @PathVariable Long commentId,
             @Parameter(hidden = true) @AuthenticationPrincipal Long memberId) {
 
-        String userId = memberId != null ? memberId+"" : null;
-
-        boolean isLiked = commentService.hasUserLikedComment(commentId, userId);
+        boolean isLiked = commentService.hasUserLikedComment(commentId, memberId);
         Long likeCount = commentService.getCommentLikeCount(commentId);
 
         CommentLikeStatusResponse response = CommentLikeStatusResponse.builder()
                 .commentId(commentId)
                 .isLiked(isLiked)
                 .likeCount(likeCount)
-                .canLike(userId != null)
+                .canLike(memberId != null)
                 .build();
 
         return ResponseEntity.ok(

@@ -31,7 +31,7 @@ public interface BoardLikeRepository extends JpaRepository<BoardLikeEntity, Long
         AND bl.isDeleted = false 
         AND b.isDeleted = false
         """)
-    Long countNewLikesOnUserBoards(@Param("authorId") String authorId,
+    Long countNewLikesOnUserBoards(@Param("authorId") Long authorId,
                                    @Param("since") LocalDateTime since);
 
     /**
@@ -47,7 +47,7 @@ public interface BoardLikeRepository extends JpaRepository<BoardLikeEntity, Long
         AND b.isDeleted = false 
         ORDER BY bl.createdAt DESC
         """)
-    Page<BoardLikeEntity> findNewLikesOnUserBoards(@Param("authorId") String authorId,
+    Page<BoardLikeEntity> findNewLikesOnUserBoards(@Param("authorId") Long authorId,
                                                    @Param("since") LocalDateTime since,
                                                    Pageable pageable);
 
@@ -55,13 +55,13 @@ public interface BoardLikeRepository extends JpaRepository<BoardLikeEntity, Long
      * 특정 게시글의 특정 사용자 좋아요 조회 (활성 상태)
      */
     @Query("SELECT bl FROM BoardLikeEntity bl WHERE bl.board.boardId = :boardId AND bl.userId = :userId AND bl.isDeleted = false")
-    Optional<BoardLikeEntity> findByBoardIdAndUserIdAndNotDeleted(@Param("boardId") Long boardId, @Param("userId") String userId);
+    Optional<BoardLikeEntity> findByBoardIdAndUserIdAndNotDeleted(@Param("boardId") Long boardId, @Param("userId") Long userId);
 
     /**
      * 특정 게시글의 특정 사용자 좋아요 조회 (삭제된 것 포함)
      */
     @Query("SELECT bl FROM BoardLikeEntity bl WHERE bl.board.boardId = :boardId AND bl.userId = :userId")
-    Optional<BoardLikeEntity> findByBoardIdAndUserId(@Param("boardId") Long boardId, @Param("userId") String userId);
+    Optional<BoardLikeEntity> findByBoardIdAndUserId(@Param("boardId") Long boardId, @Param("userId") Long userId);
 
     /**
      * 특정 게시글의 좋아요 수 조회 (활성 상태만)
@@ -79,13 +79,13 @@ public interface BoardLikeRepository extends JpaRepository<BoardLikeEntity, Long
      * 특정 사용자가 좋아요한 게시글 목록 조회 (활성 상태)
      */
     @Query("SELECT bl FROM BoardLikeEntity bl WHERE bl.userId = :userId AND bl.isDeleted = false ORDER BY bl.createdAt DESC")
-    Page<BoardLikeEntity> findByUserIdAndNotDeleted(@Param("userId") String userId, Pageable pageable);
+    Page<BoardLikeEntity> findByUserIdAndNotDeleted(@Param("userId") Long userId, Pageable pageable);
 
     /**
      * 사용자가 좋아요를 눌렀는지 확인
      */
     @Query("SELECT COUNT(bl) > 0 FROM BoardLikeEntity bl WHERE bl.board.boardId = :boardId AND bl.userId = :userId AND bl.isDeleted = false")
-    boolean existsByBoardIdAndUserIdAndNotDeleted(@Param("boardId") Long boardId, @Param("userId") String userId);
+    boolean existsByBoardIdAndUserIdAndNotDeleted(@Param("boardId") Long boardId, @Param("userId") Long userId);
 
     /**
      * 특정 기간 내 좋아요 목록 조회
@@ -103,7 +103,7 @@ public interface BoardLikeRepository extends JpaRepository<BoardLikeEntity, Long
      * 특정 사용자의 좋아요 수 조회
      */
     @Query("SELECT COUNT(bl) FROM BoardLikeEntity bl WHERE bl.userId = :userId AND bl.isDeleted = false")
-    Long countByUserIdAndNotDeleted(@Param("userId") String userId);
+    Long countByUserIdAndNotDeleted(@Param("userId") Long userId);
 
     /**
      * 특정 게시글의 최근 좋아요 목록 조회 (제한된 개수)
@@ -116,14 +116,14 @@ public interface BoardLikeRepository extends JpaRepository<BoardLikeEntity, Long
      */
     @Modifying
     @Query("UPDATE BoardLikeEntity bl SET bl.isDeleted = true, bl.deletedAt = CURRENT_TIMESTAMP WHERE bl.board.boardId = :boardId AND bl.userId = :userId")
-    int cancelLikeByBoardIdAndUserId(@Param("boardId") Long boardId, @Param("userId") String userId);
+    int cancelLikeByBoardIdAndUserId(@Param("boardId") Long boardId, @Param("userId") Long userId);
 
     /**
      * 좋아요 복구
      */
     @Modifying
     @Query("UPDATE BoardLikeEntity bl SET bl.isDeleted = false, bl.deletedAt = null WHERE bl.board.boardId = :boardId AND bl.userId = :userId")
-    int restoreLikeByBoardIdAndUserId(@Param("boardId") Long boardId, @Param("userId") String userId);
+    int restoreLikeByBoardIdAndUserId(@Param("boardId") Long boardId, @Param("userId") Long userId);
 
     /**
      * 특정 게시글의 모든 좋아요 삭제 (물리적 삭제)
@@ -136,7 +136,7 @@ public interface BoardLikeRepository extends JpaRepository<BoardLikeEntity, Long
      * 특정 사용자의 모든 좋아요 조회
      */
     @Query("SELECT bl FROM BoardLikeEntity bl WHERE bl.userId = :userId ORDER BY bl.createdAt DESC")
-    List<BoardLikeEntity> findAllByUserId(@Param("userId") String userId);
+    List<BoardLikeEntity> findAllByUserId(@Param("userId") Long userId);
 
     /**
      * 오늘 좋아요한 개수 조회
