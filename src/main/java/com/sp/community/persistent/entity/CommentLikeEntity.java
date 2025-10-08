@@ -50,8 +50,8 @@ public class CommentLikeEntity {
     /**
      * 좋아요를 누른 사용자 닉네임
      */
-    @Column(name = "user_nickname", nullable = false, length = 50)
-    private String userNickname;
+    //@Column(name = "user_nickname", nullable = false, length = 50)
+    //private String userNickname;
 
     /**
      * 좋아요 생성 일시
@@ -142,7 +142,6 @@ public class CommentLikeEntity {
         return "CommentLikeEntity{" +
                 "likeId=" + likeId +
                 ", userId='" + userId + '\'' +
-                ", userNickname='" + userNickname + '\'' +
                 ", createdAt=" + createdAt +
                 ", isDeleted=" + isDeleted +
                 '}';

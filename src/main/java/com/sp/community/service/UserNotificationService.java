@@ -197,7 +197,6 @@ public class UserNotificationService {
         return NewLikeNotificationDTO.builder()
                 .likeId(like.getLikeId())
                 .likerUserId(like.getUserId())
-                .likerNickname(like.getUserNickname())
                 .boardId(like.getBoard().getBoardId())
                 .boardTitle(like.getBoard().getTitle())
                 .boardContentPreview(contentPreview)

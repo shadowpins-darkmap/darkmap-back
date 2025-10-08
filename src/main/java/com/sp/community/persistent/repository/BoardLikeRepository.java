@@ -168,11 +168,6 @@ public interface BoardLikeRepository extends JpaRepository<BoardLikeEntity, Long
     @Query("SELECT bl.userId FROM BoardLikeEntity bl WHERE bl.board.boardId = :boardId AND bl.isDeleted = false ORDER BY bl.createdAt DESC")
     List<String> findUserIdsByBoardIdAndNotDeleted(@Param("boardId") Long boardId);
 
-    /**
-     * 특정 게시글의 좋아요한 사용자 닉네임 목록 조회
-     */
-    @Query("SELECT bl.userNickname FROM BoardLikeEntity bl WHERE bl.board.boardId = :boardId AND bl.isDeleted = false ORDER BY bl.createdAt DESC")
-    List<String> findUserNicknamesByBoardIdAndNotDeleted(@Param("boardId") Long boardId);
 
     /**
      * 최근 일주일 내 가장 인기 있는 게시글의 좋아요 조회
