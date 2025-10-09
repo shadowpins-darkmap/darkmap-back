@@ -45,7 +45,6 @@ public class SecurityConfig {
                         .requestMatchers("/webjars/**").permitAll()
 
                         // 인증 없이 접근 가능한 엔드포인트
-                        .requestMatchers("/files/**").permitAll()
                         .requestMatchers("/api/v1/auth/**").permitAll()
                         .requestMatchers("/api/v1/main/**").permitAll()
                         .requestMatchers("/oauth2/**").permitAll()
@@ -56,6 +55,12 @@ public class SecurityConfig {
                         // 인증이 필요한 엔드포인트
                         .requestMatchers("/api/v1/boards/**").authenticated()
                         .requestMatchers("/api/v1/members/**").authenticated()
+
+                        //파일 메인화면 이미지 노출 때문에 일단 열어둠
+                        .requestMatchers("/files/**").permitAll()
+
+                        // 통합검색
+                        .requestMatchers("/api/v1/search/**").permitAll()
 
                         // 나머지는 허용
                         .anyRequest().permitAll()

@@ -230,4 +230,15 @@ public interface BoardRepository extends JpaRepository<BoardEntity, Long> {
      */
     @Query("SELECT COUNT(b) > 0 FROM BoardEntity b WHERE b.boardId = :boardId AND b.isDeleted = false")
     boolean existsByIdAndNotDeleted(@Param("boardId") Long boardId);
+
+    /**
+     * 전체검색용
+     * @param keyword
+     * @return
+     */
+    @Query("SELECT b FROM BoardEntity b WHERE " +
+            "(b.title LIKE %:keyword% OR b.content LIKE %:keyword%) " +
+            "AND b.isDeleted = false " +
+            "AND (b.category <> 'INCIDENTREPORT' OR b.reportApproved = true)")
+    List<BoardEntity> searchByKeyword(@Param("keyword") String keyword);
 }
