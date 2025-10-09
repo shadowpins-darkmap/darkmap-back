@@ -404,7 +404,7 @@ public class BoardService {
                 .boardId(entity.getBoardId())
                 .title(entity.getTitle())
                 .authorId(entity.getAuthorId())
-                .authorNickname(memberRepository.findNicknameByMemberId(entity.getAuthorId()).toString())
+                .authorNickname(getAuthorNickname(entity.getAuthorId()))
                 .content(entity.getContent())
                 .category(entity.getCategory())
                 .reportType(entity.getReportType())
@@ -434,7 +434,7 @@ public class BoardService {
                 .title(entity.getTitle())
                 .content(entity.getContent())
                 .authorId(entity.getAuthorId())
-                .authorNickname(memberRepository.findNicknameByMemberId(entity.getAuthorId()).toString())
+                .authorNickname(getAuthorNickname(entity.getAuthorId()))
                 .category(entity.getCategory())
                 .reportType(entity.getReportType())
                 .reportLocation(entity.getReportLocation())
@@ -508,9 +508,25 @@ public class BoardService {
                 .boardId(entity.getBoardId())
                 .title(entity.getTitle())
                 .authorId(entity.getAuthorId())
+                .category(entity.getCategory())
+                .authorNickname(getAuthorNickname(entity.getAuthorId()))
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
                 .isReported(entity.getIsReported())
                 .build();
+    }
+
+
+    /**
+     * 사용자 닉네임 조회 헬퍼 메서드
+     */
+    private String getAuthorNickname(Long authorId) {
+        try {
+            return memberRepository.findNicknameByMemberId(authorId)
+                    .orElse(authorId.toString());
+        } catch (Exception e) {
+            log.warn("닉네임 조회 실패: authorId={}", authorId);
+            return authorId.toString();
+        }
     }
 }
