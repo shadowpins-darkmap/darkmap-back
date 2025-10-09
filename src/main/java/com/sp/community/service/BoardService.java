@@ -94,15 +94,11 @@ public class BoardService {
 
         createDTO.validate();
 
-        String nickname = memberRepository.findNicknameByMemberId(createDTO.getAuthorId())
-                .orElse(createDTO.getAuthorId().toString());
-
         // BoardEntity 빌더로 기본 정보 설정
         BoardEntity.BoardEntityBuilder builder = BoardEntity.builder()
                 .title(createDTO.getTrimmedTitle())
                 .content(createDTO.getTrimmedContent())
                 .authorId(createDTO.getAuthorId())
-                //.authorNickname(nickname)
                 .category(createDTO.getNormalizedCategory())
                 .isNotice(createDTO.getIsNotice());
 
