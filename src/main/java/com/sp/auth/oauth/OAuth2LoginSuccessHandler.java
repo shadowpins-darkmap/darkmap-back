@@ -39,14 +39,20 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
                                         HttpServletResponse response,
                                         Authentication authentication) throws IOException {
 
-        OAuth2User oAuth2User = (OAuth2User) authentication.getPrincipal();
+        long startTime = System.currentTimeMillis();
+        log.info("🔵 OAuth2 Success Handler 시작");
 
+        OAuth2User oAuth2User = (OAuth2User) authentication.getPrincipal();
         String email = oAuth2User.getAttribute("email");
         String providerId = oAuth2User.getAttribute("sub");
 
+        // Member 저장 시간 측정
+        long memberStart = System.currentTimeMillis();
         Member member = memberService.saveIfNotExists(email, providerId, AuthType.GOOGLE);
+        log.info("✅ Member 저장 완료: {}ms", System.currentTimeMillis() - memberStart);
 
-        // 구글 액세스 토큰 추출 및 저장
+        // Google Token 저장 시간 측정
+        long tokenStart = System.currentTimeMillis();
         OAuth2AuthorizedClient authorizedClient =
                 authorizedClientService.loadAuthorizedClient("google", authentication.getName());
 
@@ -65,31 +71,35 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
                     authorizedClient.getAccessToken().getExpiresAt()
             );
         }
+        log.info("✅ Google Token 저장 완료: {}ms", System.currentTimeMillis() - tokenStart);
 
-        // JWT 토큰 생성
+        // JWT 토큰 생성 시간 측정
+        long jwtStart = System.currentTimeMillis();
         String accessToken = jwtTokenProvider.createAccessToken(member.getId(), member.getLevel());
         String refreshToken = jwtTokenProvider.createRefreshToken(member.getId());
+        log.info("✅ JWT 토큰 생성 완료: {}ms", System.currentTimeMillis() - jwtStart);
 
+        // RefreshToken 저장 시간 측정
+        long refreshStart = System.currentTimeMillis();
         refreshTokenService.save(
                 member.getId(),
                 refreshToken,
                 LocalDateTime.now().plusDays(7)
         );
+        log.info("✅ RefreshToken 저장 완료: {}ms", System.currentTimeMillis() - refreshStart);
 
-        // 요청 출처 기반으로 환경 판단
+        // 환경 설정
         EnvironmentConfig envConfig = determineEnvironment(request);
-
         log.info("OAuth2 Success - Frontend: {}, Cookie Domain: {}, Is Local: {}",
                 envConfig.frontendUrl, envConfig.cookieDomain, envConfig.isLocal);
 
-        // 쿠키 설정
+        // 쿠키 설정 및 리다이렉트
         ResponseCookie.ResponseCookieBuilder cookieBuilder = ResponseCookie.from("refresh_token", refreshToken)
                 .httpOnly(true)
                 .secure(!envConfig.isLocal)
                 .path("/")
                 .maxAge(Duration.ofDays(7));
 
-        // 로컬 환경이 아닌 경우에만 domain과 sameSite 설정
         if (!envConfig.isLocal) {
             cookieBuilder.domain(envConfig.cookieDomain);
             cookieBuilder.sameSite("None");
@@ -100,9 +110,11 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
         ResponseCookie refreshCookie = cookieBuilder.build();
         response.addHeader("Set-Cookie", refreshCookie.toString());
 
-        // 동적 리다이렉트
         String redirectUrl = envConfig.frontendUrl + "/social-redirect-google?success=true&token=" + accessToken;
+
+        log.info("🔵 OAuth2 Success Handler 총 소요 시간: {}ms", System.currentTimeMillis() - startTime);
         log.info("Redirecting to: {}", redirectUrl);
+
         response.sendRedirect(redirectUrl);
     }
 

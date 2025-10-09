@@ -23,26 +23,45 @@ public class MemberService {
     private final MemberRepository memberRepository;
     private final BadWordFilter badWordFilter;
 
-    // 이메일 필수값으로 들어온다는 전제하에 가입여부 판단
+    @Transactional
     public Member saveIfNotExists(String email, String userId, AuthType type) {
+        long startTime = System.currentTimeMillis();
+        log.info("saveIfNotExists 시작 - email: {}", email);
+
+        // 1. 기존 회원 조회 시간 측정
+        long queryStart = System.currentTimeMillis();
         Optional<Member> emailExists = memberRepository.findByEmail(email);
+        log.info("DB 조회 완료: {}ms", System.currentTimeMillis() - queryStart);
+
         if (emailExists.isPresent()) {
             Member existing = emailExists.get();
+
             // 로그인 횟수 카운트
             if (existing.getType() == type && existing.getMemberId().equals(userId)) {
                 existing.increaseLoginVisitCount();
-                return memberRepository.save(existing);
+
+                long saveStart = System.currentTimeMillis();
+                Member saved = memberRepository.save(existing);
+                log.info("기존 회원 업데이트 완료: {}ms", System.currentTimeMillis() - saveStart);
+                log.info("saveIfNotExists 총 소요: {}ms", System.currentTimeMillis() - startTime);
+                return saved;
             }
+
             // 이메일은 같은데 다른 소셜 로그인일 경우
             throw new IllegalStateException("이미 다른 소셜 로그인으로 가입된 이메일입니다.");
         }
 
-        // 가입 처리
-        long memberCount = memberRepository.count();
-        int userNumber = (int) (memberCount + 1);
+        long countStart = System.currentTimeMillis();
+        Integer lastUserNumber = memberRepository.findMaxUserNumber();
+        int userNumber = (lastUserNumber != null ? lastUserNumber : 0) + 1;
+
+        log.info("userNumber 조회 완료: {}ms (userNumber: {})",
+                System.currentTimeMillis() - countStart, userNumber);
+
         String nickname = NicknameGenerator.generateNickname(userNumber);
 
-        return memberRepository.save(Member.builder()
+        long saveStart = System.currentTimeMillis();
+        Member newMember = memberRepository.save(Member.builder()
                 .email(email)
                 .memberId(userId)
                 .nickname(nickname)
@@ -52,6 +71,11 @@ public class MemberService {
                 .visitCount(1)
                 .isDeleted(Boolean.FALSE)
                 .build());
+
+        log.info("회원 가입 완료: {}ms", System.currentTimeMillis() - saveStart);
+        log.info("saveIfNotExists 총 소요: {}ms", System.currentTimeMillis() - startTime);
+
+        return newMember;
     }
 
     public Member findById(Long id) {

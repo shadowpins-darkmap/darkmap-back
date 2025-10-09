@@ -21,6 +21,9 @@ public class Member {
 
     private String memberId;
 
+    @Column(name = "user_number", nullable = true) //인덱스용
+    private Integer userNumber;
+
     @Enumerated(EnumType.STRING)
     private AuthType type;
 

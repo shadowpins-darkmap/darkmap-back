@@ -14,4 +14,6 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
     boolean existsByNicknameAndIdNot(String nickname, Long id);
     @Query("SELECT m.nickname FROM Member m WHERE m.id = :memberId AND m.isDeleted = false")
     Optional<String> findNicknameByMemberId(@Param("memberId") Long memberId);
+    @Query("SELECT MAX(m.userNumber) FROM Member m")
+    Integer findMaxUserNumber();
 }
