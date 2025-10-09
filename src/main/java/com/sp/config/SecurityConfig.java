@@ -45,6 +45,7 @@ public class SecurityConfig {
                         .requestMatchers("/webjars/**").permitAll()
 
                         // 인증 없이 접근 가능한 엔드포인트
+                        .requestMatchers("/files/**").permitAll()
                         .requestMatchers("/api/v1/auth/**").permitAll()
                         .requestMatchers("/api/v1/main/**").permitAll()
                         .requestMatchers("/oauth2/**").permitAll()
