@@ -148,6 +148,4 @@ public interface CommentRepository extends JpaRepository<CommentEntity, Long> {
     @Modifying
     @Query("UPDATE CommentEntity c SET c.isDeleted = true, c.deletedAt = CURRENT_TIMESTAMP WHERE c.commentId = :commentId AND c.isDeleted = false")
     int deleteByCommentId(@Param("commentId") Long commentId);
-
-    Optional<CommentVO> findByCommentId(Long commentId);
 }

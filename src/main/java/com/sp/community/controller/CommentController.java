@@ -585,7 +585,6 @@ public class CommentController {
     })
     @GetMapping("/my")
     public ResponseEntity<CommonApiResponse<List<CommentVO>>> getMyComments(
-            @Parameter(description = "작성자 ID", required = true, example = "1") @PathVariable Long authorId,
             @Parameter(description = "페이징 정보") @ModelAttribute PageRequestDTO pageRequestDTO,
             @Parameter(hidden = true) @AuthenticationPrincipal Long memberId) {
 
@@ -597,8 +596,9 @@ public class CommentController {
                             .build()
             );
         }
-        log.debug("사용자 댓글 목록 조회: authorId={}", authorId);
-        List<CommentVO> comments = commentService.getUserComments(authorId, memberId, pageRequestDTO);
+
+        log.debug("내 댓글 목록 조회: memberId={}", memberId);
+        List<CommentVO> comments = commentService.getUserComments(memberId, memberId, pageRequestDTO);
 
         return ResponseEntity.ok(
                 CommonApiResponse.<List<CommentVO>>builder()

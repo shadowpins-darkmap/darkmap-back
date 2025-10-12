@@ -316,20 +316,6 @@ public class CommentService {
     }
 
     /**
-     * 댓글 존재 여부 확인
-     */
-    public Optional<CommentEntity> findComment(Long commentId) {
-        return commentRepository.findById(commentId);
-    }
-
-    /**
-     * 댓글 VO 조회 (기존 메서드 활용)
-     * 실제 구현에서는 기존에 있는 메서드를 사용하세요
-     */
-    private Optional<CommentVO> getCommentById(Long commentId) {
-        return commentRepository.findByCommentId(commentId);
-    }
-    /**
      * 댓글 신고용 정보 조회 (VO 기반)
      * CommentVO와 BoardVO를 조합해서 신고에 필요한 정보를 DTO로 반환
      */
@@ -389,15 +375,6 @@ public class CommentService {
             log.warn("닉네임 조회 실패: authorId={}", authorId);
             return authorId.toString();
         }
-    }
-
-    /**
-     * 댓글 존재 여부 확인
-     */
-    public boolean existsComment(Long commentId) {
-        return commentRepository.findById(commentId)
-                .map(CommentEntity::isVisible)
-                .orElse(false);
     }
 
     // ============ Private Helper Methods ============
@@ -470,4 +447,5 @@ public class CommentService {
 
         return commentVO;
     }
+
 }
