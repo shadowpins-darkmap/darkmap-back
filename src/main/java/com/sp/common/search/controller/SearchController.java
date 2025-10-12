@@ -48,16 +48,15 @@ public class SearchController {
             @RequestParam("keyword") String keyword,
 
             @Parameter(
-                    description = "페이지 번호 (0부터 시작, 기본값: 0)",
-                    example = "0"
+                    description = "페이지 번호 (1부터 시작, 기본값: 1)",
+                    example = "1"
             )
-            @RequestParam(value = "page", defaultValue = "0") int page) {
+            @RequestParam(value = "page", defaultValue = "1") int page) {
 
         if (keyword == null || keyword.trim().isEmpty()) {
             return ResponseEntity.badRequest().build();
         }
-
-        Pageable pageable = PageRequest.of(page, 10);
+        Pageable pageable = PageRequest.of(page - 1, 10);
 
         Page<UnifiedSearchResultDTO> results = unifiedSearchService.unifiedSearch(keyword, pageable);
         return ResponseEntity.ok(results);
