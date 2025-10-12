@@ -72,7 +72,7 @@ public class CommentService {
 
         log.info("댓글 생성 완료: commentId={}", savedComment.getCommentId());
 
-        return convertToVO(savedComment, createDTO.getAuthorId());
+        return convertToVO(savedComment, userId);
     }
 
     /**
