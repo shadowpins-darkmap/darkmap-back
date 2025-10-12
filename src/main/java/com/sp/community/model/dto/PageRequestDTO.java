@@ -24,7 +24,7 @@ import org.springframework.data.domain.Sort;
 public class PageRequestDTO {
 
     /**
-     * 페이지 번호 (0부터 시작)
+     * 페이지 번호 (1부터 시작)
      */
     @Min(value = 1, message = "페이지 번호는 1 이상이어야 합니다.")
     @Builder.Default
