@@ -33,16 +33,6 @@ public class CommentReportInfoDto {
     private BoardVO.BoardStatus boardStatus;
 
     /**
-     * 댓글 작성자 표시명 반환
-     */
-    public String getCommentAuthorDisplayName() {
-        if (commentAuthorNickname != null && !commentAuthorNickname.trim().isEmpty()) {
-            return commentAuthorNickname;
-        }
-        return commentAuthorId != null ? commentAuthorId.toString() : "알 수 없음";
-    }
-
-    /**
      * 게시글이 제보 카테고리인지 확인
      */
     public boolean isIncidentReportBoard() {
