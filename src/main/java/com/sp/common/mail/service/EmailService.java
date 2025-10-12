@@ -319,7 +319,7 @@ public class EmailService {
                 createDTO.hasAttachment() ? "• 첨부파일: " + createDTO.getAttachmentFile().getOriginalFilename() : "",
                 commentInfo.getCommentId(),
                 truncateText(commentInfo.getCommentContent(), 200),
-                commentInfo.getCommentAuthorDisplayName(),
+                getCommentAuthorDisplayName(commentInfo.getCommentAuthorId()),
                 commentInfo.getCommentCreatedAt() != null ?
                         commentInfo.getCommentCreatedAt().format(DateTimeFormatter.ofPattern("yyyy년 MM월 dd일 HH시 mm분")) : "알 수 없음",
                 commentInfo.getBoardTitleOrDefault(),
@@ -328,6 +328,19 @@ public class EmailService {
                         "\n\n[추가 설명]\n" + createDTO.getAdditionalInfo() : "",
                 commentInfo.getCommentId()
         );
+    }
+
+    /**
+     * 댓글 작성자 표시명 반환
+     */
+    private String getCommentAuthorDisplayName(Long authorId) {
+        try {
+            return memberRepository.findNicknameByMemberId(authorId)
+                    .orElse(authorId.toString());
+        } catch (Exception e) {
+            log.warn("닉네임 조회 실패: authorId={}", authorId);
+            return authorId.toString();
+        }
     }
 
     /**
