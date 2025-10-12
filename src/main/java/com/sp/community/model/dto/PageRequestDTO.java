@@ -26,9 +26,9 @@ public class PageRequestDTO {
     /**
      * 페이지 번호 (0부터 시작)
      */
-    @Min(value = 0, message = "페이지 번호는 0 이상이어야 합니다.")
+    @Min(value = 1, message = "페이지 번호는 1 이상이어야 합니다.")
     @Builder.Default
-    private Integer page = 0;
+    private Integer page = 1;
 
     /**
      * 페이지 크기
@@ -80,7 +80,7 @@ public class PageRequestDTO {
      */
     public Pageable toPageable() {
         return PageRequest.of(
-                page != null ? page : 0,
+                Math.max(0, (page != null ? page : 1) - 1),
                 size != null ? size : 20,
                 Sort.by(direction.toSpringDirection(), sortBy != null ? sortBy : "createdAt")
         );
@@ -151,7 +151,11 @@ public class PageRequestDTO {
                 sort = Sort.by(direction.toSpringDirection(), "createdAt");
         }
 
-        return PageRequest.of(page != null ? page : 0, size != null ? size : 20, sort);
+        return PageRequest.of(
+                Math.max(0, (page != null ? page : 1) - 1),  // ← 추가
+                size != null ? size : 20,
+                sort
+        );
     }
 
     /**
@@ -177,58 +181,13 @@ public class PageRequestDTO {
                 sort = Sort.by(Sort.Direction.ASC, "createdAt");
         }
 
-        return PageRequest.of(page != null ? page : 0, size != null ? size : 20, sort);
+        return PageRequest.of(
+                Math.max(0, (page != null ? page : 1) - 1),
+                size != null ? size : 20,
+                sort
+        );
     }
 
-    /**
-     * 계층형 댓글 정렬용 Pageable 생성
-     */
-    public Pageable toHierarchicalCommentPageable() {
-        // 계층형 댓글: 부모 댓글 ID 순 → 정렬 순서 순 → 생성 시간 순
-        Sort sort = Sort.by(Sort.Direction.ASC, "parentComment.commentId")
-                .and(Sort.by(Sort.Direction.ASC, "sortOrder"))
-                .and(Sort.by(Sort.Direction.ASC, "createdAt"));
-
-        return PageRequest.of(page != null ? page : 0, size != null ? size : 50, sort);
-    }
-
-    /**
-     * 파일 정렬용 Pageable 생성
-     */
-    public Pageable toFilePageable() {
-        Sort sort;
-
-        switch (sortBy != null ? sortBy : "sortOrder") {
-            case "name":
-            case "fileName":
-                sort = Sort.by(direction.toSpringDirection(), "originalFileName");
-                break;
-            case "size":
-            case "fileSize":
-                sort = Sort.by(direction.toSpringDirection(), "fileSize")
-                        .and(Sort.by(Sort.Direction.ASC, "sortOrder"));
-                break;
-            case "type":
-            case "fileType":
-                sort = Sort.by(direction.toSpringDirection(), "fileType")
-                        .and(Sort.by(Sort.Direction.ASC, "sortOrder"));
-                break;
-            case "downloads":
-            case "downloadCount":
-                sort = Sort.by(direction.toSpringDirection(), "downloadCount")
-                        .and(Sort.by(Sort.Direction.ASC, "sortOrder"));
-                break;
-            case "created":
-            case "createdAt":
-                sort = Sort.by(direction.toSpringDirection(), "createdAt");
-                break;
-            default:
-                sort = Sort.by(Sort.Direction.ASC, "sortOrder")
-                        .and(Sort.by(Sort.Direction.ASC, "createdAt"));
-        }
-
-        return PageRequest.of(page != null ? page : 0, size != null ? size : 20, sort);
-    }
 
     /**
      * 관리자용 신고 정렬 Pageable 생성
@@ -255,7 +214,11 @@ public class PageRequestDTO {
                 sort = Sort.by(direction.toSpringDirection(), "createdAt");
         }
 
-        return PageRequest.of(page != null ? page : 0, size != null ? size : 20, sort);
+        return PageRequest.of(
+                Math.max(0, (page != null ? page : 1) - 1),  // ← 추가
+                size != null ? size : 20,
+                sort
+        );
     }
 
     /**
@@ -310,8 +273,8 @@ public class PageRequestDTO {
      * 기본값으로 초기화
      */
     public void setDefaults() {
-        if (page == null || page < 0) {
-            page = 0;
+        if (page == null || page < 1) {
+            page = 1;
         }
 
         if (size == null || size < 1 || size > 100) {
