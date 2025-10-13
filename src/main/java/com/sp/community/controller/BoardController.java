@@ -1,5 +1,6 @@
 package com.sp.community.controller;
 
+import com.sp.common.mail.service.EmailService;
 import com.sp.community.model.dto.BoardCreateDTO;
 import com.sp.community.model.dto.BoardSearchDTO;
 import com.sp.community.model.dto.BoardUpdateDTO;
@@ -40,6 +41,7 @@ import java.util.List;
 public class BoardController {
 
     private final BoardService boardService;
+    private final EmailService emailService;
 
 
     /**
@@ -441,7 +443,6 @@ public class BoardController {
         createDTO.setAuthorId(memberId);
 
         BoardVO createdBoard = boardService.createBoard(createDTO);
-
         return ResponseEntity.status(HttpStatus.CREATED).body(
                 CommonApiResponse.<BoardVO>builder()
                         .success(true)

@@ -3,21 +3,15 @@ package com.sp.community.model.dto;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-import lombok.ToString;
+import lombok.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Arrays;
 import java.util.List;
 
 /**
- * 게시글 생성 요청 DTO (이미지 한 개 첨부 지원)
+ * 제보글 생성 요청 DTO (이미지 한 개 첨부 지원)
  */
 @Getter
 @Setter
@@ -25,48 +19,41 @@ import java.util.List;
 @AllArgsConstructor
 @Builder
 @ToString(exclude = "imageFile") // 파일 객체는 toString에서 제외
-public class BoardCreateDTO {
+public class IncidentReportCreateDTO {
 
-    /**
-     * 게시글 제목
-     */
-    @NotBlank(message = "제목은 필수입니다.")
-    @Size(min = 1, max = 200, message = "제목은 1자 이상 200자 이하로 입력해주세요.")
-    private String title;
 
-    /**
-     * 게시글 내용
-     */
+    @Schema(description = "제보 유형")
+    @Size(max = 65535, message = "제보 유형은 65,535자 이하로 입력해주세요.")
+    private String reportType;
+
+    @Schema(description = "제보 위치")
+    @Size(max = 65535, message = "제보 위치는 65,535자 이하로 입력해주세요.")
+    private String reportLocation;
+
     @NotBlank(message = "내용은 필수입니다.")
-    @Size(min = 1, max = 10000, message = "내용은 1자 이상 10,000자 이하로 입력해주세요.")
+    @Size(min = 1, max = 16777215, message = "내용은 1자 이상 16,777,215자 이하로 입력해주세요.")
     private String content;
-
-    /**
-     * 작성자 ID
-     */
-    @Schema(hidden = true)
-    private Long authorId;
-
-    @Schema(description = "작성자 닉네임", example = "사용자123")
-    @Size(max = 50, message = "")
-    private String authorNickname;
 
     @Schema(description = "첨부 이미지 파일")
     private MultipartFile imageFile;
 
-    @Schema(description = "게시글 카테고리", example = "GENERAL")
-    @Size(max = 50, message = "카테고리는 50자 이하로 입력해주세요.")
-    private String category;
+    @Schema(description = "뉴스기사 URL")
+    @Size(max = 65535)
+    private String url;
 
-    @Schema(description = "공지사항 여부", example = "false", hidden = true)
-    @Builder.Default
-    private Boolean isNotice = false;
+    @Schema(hidden = true)
+    private Long reporterId;
 
-    @Schema(description = "댓글 허용 여부", example = "true", hidden = true)
-    @Builder.Default
-    private Boolean allowComments = true;
 
     // ============ 이미지 파일 관련 메서드 ============
+
+    public boolean hasAttachment() {
+        return hasImage();
+    }
+
+    public MultipartFile getAttachmentFile() {
+        return imageFile;
+    }
 
     /**
      * 이미지 파일 첨부 여부 확인
@@ -156,36 +143,6 @@ public class BoardCreateDTO {
     }
 
     /**
-     * 제목 정리 (앞뒤 공백 제거)
-     */
-    @JsonIgnore
-    @Schema(hidden = true)
-    public String getTrimmedTitle() {
-        return title != null ? title.trim() : "";
-    }
-
-    /**
-     * 내용 정리 (앞뒤 공백 제거)
-     */
-    @JsonIgnore
-    @Schema(hidden = true)
-    public String getTrimmedContent() {
-        return content != null ? content.trim() : "";
-    }
-
-    /**
-     * 카테고리 정리 (앞뒤 공백 제거, 소문자 변환)
-     */
-    @JsonIgnore
-    @Schema(hidden = true)
-    public String getNormalizedCategory() {
-        if (category == null || category.trim().isEmpty()) {
-            return null;
-        }
-        return category.trim().toUpperCase();
-    }
-
-    /**
      * 파일 확장자 추출
      */
     @JsonIgnore
@@ -213,29 +170,18 @@ public class BoardCreateDTO {
                     "JPG, JPEG, PNG, GIF, WEBP 형식의 10MB 이하 파일만 업로드 가능합니다.");
         }
 
-        // 권한 검증 (공지사항 등록은 관리자만 가능)
-        if (isNotice != null && isNotice) {
-            validateNoticePermission();
+        if (reportType == null || reportType.trim().isEmpty()) {
+            throw new IllegalArgumentException("제보 유형은 필수입니다.");
         }
-    }
-
-    /**
-     * 공지사항 등록 권한 검증 (기본 구현)
-     */
-    @JsonIgnore
-    @Schema(hidden = true)
-    private void validateNoticePermission() {
-        // 실제 구현에서는 사용자의 권한을 확인해야 함
-        // 여기서는 기본적인 검증만 수행
-        if (authorId == null) {
-            throw new IllegalArgumentException("공지사항 등록 권한이 없습니다.");
+        if (reportLocation == null || reportLocation.trim().isEmpty()) {
+            throw new IllegalArgumentException("제보 위치는 필수입니다.");
         }
-
-        // TODO: 실제 관리자 권한 확인 로직 구현
-        // 예: SecurityContext에서 사용자 권한 확인
-        // if (!SecurityUtils.hasRole("ADMIN")) {
-        //     throw new UnauthorizedException("공지사항 등록 권한이 없습니다.");
-        // }
+        if (reportType.length() > 65535) {
+            throw new IllegalArgumentException("제보 유형은 65,535자 이하로 입력해주세요.");
+        }
+        if (reportLocation.length() > 65535) {
+            throw new IllegalArgumentException("제보 위치는 65,535자 이하로 입력해주세요.");
+        }
     }
 
     // ============ 디버깅/로깅용 메서드 ============
@@ -246,12 +192,9 @@ public class BoardCreateDTO {
     @JsonIgnore
     @Schema(hidden = true)
     public String getSummary() {
-        return String.format("BoardCreateDTO{title='%s', authorId='%s', category='%s', hasImage=%s, isNotice=%s}",
-                getTrimmedTitle(),
-                authorId,
-                getNormalizedCategory(),
-                hasImage(),
-                isNotice);
+        return String.format("IncidentReportCreateDTO{reporterId='%s', hasImage=%s}",
+                reporterId,
+                hasImage());
     }
 
     /**

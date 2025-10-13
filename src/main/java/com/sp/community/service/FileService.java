@@ -1,5 +1,6 @@
 package com.sp.community.service;
 
+import com.sp.community.persistent.entity.IncidentReportEntity;
 import com.sp.config.FileProperties;
 import com.sp.community.model.response.FileUploadResponse;
 import com.sp.community.persistent.entity.BoardEntity;
@@ -275,6 +276,26 @@ public class FileService {
     }
 
     /**
+     * 제보하기 첨부파일 업로드
+     */
+    public FileUploadResponse uploadImageForIncidentReport(Long id, MultipartFile file) {
+        // 파일 유효성 검증
+        validateReportAttachmentFile(file);
+
+        // 파일 저장
+        String storedFileName = saveReportFile(file);
+
+        // 응답 DTO 생성
+        return FileUploadResponse.builder()
+                .originalFileName(file.getOriginalFilename())
+                .storedFileName(storedFileName)
+                .fileUrl(fileProperties.getBaseUrl() + "reports/" + storedFileName) //임시로 같은 경로 사용
+                .fileSize(file.getSize())
+                .contentType(file.getContentType())
+                .build();
+    }
+
+    /**
      * 신고 첨부파일 유효성 검증
      */
     private void validateReportAttachmentFile(MultipartFile file) {
@@ -337,4 +358,5 @@ public class FileService {
             log.error("신고 첨부파일 삭제 실패: {}", storedFileName, e);
         }
     }
+
 }

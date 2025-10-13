@@ -102,12 +102,6 @@ public class BoardService {
                 .category(createDTO.getNormalizedCategory())
                 .isNotice(createDTO.getIsNotice());
 
-        // INCIDENTREPORT 카테고리인 경우 제보 정보 추가
-        if (createDTO.isIncidentReportCategory()) {
-            builder.reportType(createDTO.getTrimmedReportType())
-                    .reportLocation(createDTO.getTrimmedReportLocation());
-        }
-
         BoardEntity boardEntity = builder.build();
         BoardEntity savedBoard = boardRepository.save(boardEntity);
 
@@ -400,16 +394,13 @@ public class BoardService {
         // 이미지 파일 존재 여부 확인
         Optional<FileUploadResponse> imageInfo = fileService.getBoardImageInfo(entity.getBoardId());
 
-        return BoardVO.builder()
+        BoardVO vo = BoardVO.builder()
                 .boardId(entity.getBoardId())
                 .title(entity.getTitle())
                 .authorId(entity.getAuthorId())
                 .authorNickname(getAuthorNickname(entity.getAuthorId()))
                 .content(entity.getContent())
                 .category(entity.getCategory())
-                .reportType(entity.getReportType())
-                .reportLocation(entity.getReportLocation())
-                .reportUrl(entity.getReportUrl())
                 .viewCount(entity.getViewCount())
                 .likeCount(entity.getLikeCount())
                 .commentCount(entity.getCommentCount())
@@ -420,6 +411,15 @@ public class BoardService {
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
                 .build();
+
+        // ✅ 사건제보 필드 추가 설정
+        if ("INCIDENTREPORT".equals(entity.getCategory().toUpperCase())) {
+            vo.setReportType(entity.getReportType());
+            vo.setReportLocation(entity.getReportLocation());
+            vo.setReportUrl(entity.getReportUrl());
+        }
+
+        return vo;
     }
 
     /**

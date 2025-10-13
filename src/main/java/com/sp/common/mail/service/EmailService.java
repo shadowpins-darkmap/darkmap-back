@@ -6,9 +6,11 @@ import com.sp.common.mail.model.dto.ReportEmailDto;
 import com.sp.community.model.dto.BoardCreateDTO;
 import com.sp.community.model.dto.BoardReportCreateDTO;
 import com.sp.community.model.dto.CommentReportCreateDTO;
+import com.sp.community.model.dto.IncidentReportCreateDTO;
 import com.sp.community.model.vo.BoardReportVO;
 import com.sp.community.model.vo.BoardVO;
 import com.sp.community.model.vo.CommentReportVO;
+import com.sp.community.model.vo.IncidentReportVO;
 import com.sp.community.service.BoardService;
 import com.sp.community.service.CommentReportService;
 import com.sp.community.service.CommentService;
@@ -591,22 +593,22 @@ public class EmailService {
     /**
      * 사건제보 게시글 생성 이메일 발송
      */
-    public void sendIncidentReportCreationEmail(BoardVO boardVO, BoardCreateDTO createDTO) {
+    public void sendIncidentReportCreationEmail(IncidentReportCreateDTO createDTO, IncidentReportVO incidentReportVO) {
         try {
             // 작성자 닉네임 조회
-            String authorNickname = memberRepository.findNicknameByMemberId(createDTO.getAuthorId())
-                    .orElse(createDTO.getAuthorId().toString());
+            String authorNickname = memberRepository.findNicknameByMemberId(createDTO.getReporterId())
+                    .orElse(createDTO.getReporterId().toString());
 
             // 이메일 발송
             ReportEmailDto reportDto = createIncidentReportEmailDto(
-                    boardVO, createDTO, authorNickname);
+                    incidentReportVO, createDTO, authorNickname);
 
             sendReportEmail(reportDto);
 
-            log.info("사건제보 게시글 생성 이메일 발송 성공 - boardId: {}", boardVO.getBoardId());
+            log.info("사건제보 게시글 생성 이메일 발송 성공 - id: {}", incidentReportVO.getId());
 
         } catch (Exception e) {
-            log.error("사건제보 게시글 생성 이메일 발송 실패 - boardId: {}", boardVO.getBoardId(), e);
+            log.error("사건제보 게시글 생성 이메일 발송 실패 - id: {}", incidentReportVO.getId(), e);
             throw e;
         }
     }
@@ -614,22 +616,22 @@ public class EmailService {
     /**
      * 사건제보 게시글 생성 이메일 DTO 생성
      */
-    private ReportEmailDto createIncidentReportEmailDto(BoardVO boardVO,
-                                                        BoardCreateDTO createDTO,
+    private ReportEmailDto createIncidentReportEmailDto(IncidentReportVO incidentReportVO,
+                                                        IncidentReportCreateDTO createDTO,
                                                         String authorNickname) {
 
-        String reportId = generateIncidentReportId(boardVO.getBoardId());
-        String emailContent = createIncidentReportEmailContent(boardVO, createDTO, reportId, authorNickname);
+        String reportId = generateIncidentReportId(incidentReportVO.getId());
+        String emailContent = createIncidentReportEmailContent(createDTO, authorNickname);
 
         return ReportEmailDto.builder()
                 .reportTitle("새로운 사건제보 등록")
+                .reportCategory(incidentReportVO.getReportType())
+                .reportLocation(incidentReportVO.getReportLocation())
                 .reportContent(emailContent)
-                .reportCategory("사건제보 - " + createDTO.getTrimmedReportType())
                 .reporterName(authorNickname)
                 .reporterEmail(null)
                 .reportDate(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")))
                 .reportId(reportId)
-                .reportLocation(createDTO.getTrimmedReportLocation())
                 .attachmentFile(createDTO.getImageFile()) // 이미지 파일 첨부
                 .build();
     }
@@ -645,46 +647,34 @@ public class EmailService {
     /**
      * 사건제보 게시글 생성 이메일 내용 생성
      */
-    private String createIncidentReportEmailContent(BoardVO boardVO,
-                                                    BoardCreateDTO createDTO,
-                                                    String reportId,
+    private String createIncidentReportEmailContent(IncidentReportCreateDTO createDTO,
                                                     String authorNickname) {
         return String.format("""
         새로운 사건제보가 등록되었습니다.
         
         === 제보 정보 ===
-        • 제보 ID: %s
         • 제보자: %s
         • 등록 시간: %s
         %s
         
         === 사건제보 내용 ===
-        • 게시글 ID: %s
-        • 제목: %s
         • 제보 유형: %s
         • 제보 위치: %s
-        • 카테고리: %s
+        • 뉴스 기사 URL: %s
         
         === 제보 상세 내용 ===
         %s
-        
-        === 처리 안내 ===
-        관리자 페이지에서 게시글 ID %s로 검색하여 확인 및 승인 처리해주세요.
-        
+                
         ---
         다크맵 사건제보 시스템에서 자동 발송된 메일입니다.
         """,
-                reportId,
                 authorNickname,
                 LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy년 MM월 dd일 HH시 mm분")),
                 createDTO.hasImage() ? "• 첨부 이미지: " + createDTO.getImageFile().getOriginalFilename() : "",
-                boardVO.getBoardId(),
-                truncateText(boardVO.getTitle(), 100),
-                createDTO.getTrimmedReportType() != null ? createDTO.getTrimmedReportType() : "미지정",
-                createDTO.getTrimmedReportLocation() != null ? createDTO.getTrimmedReportLocation() : "미지정",
-                boardVO.getCategory(),
-                truncateText(boardVO.getContent(), 500),
-                boardVO.getBoardId()
+                createDTO.getReportType(),
+                createDTO.getReportLocation(),
+                createDTO.getUrl() != null ? createDTO.getUrl() : "(없음)",
+                createDTO.getContent()
         );
     }
 }
