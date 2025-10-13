@@ -50,7 +50,7 @@ public class IncidentReportController {
             @Parameter(description = "제보 유형", required = true) @RequestParam("reportType") String reportType,
             @Parameter(description = "제보 위치", required = true) @RequestParam("reportLocation") String reportLocation,
             @Parameter(description = "내용", required = true) @RequestParam("content") String content,
-            @Parameter(description = "뉴스기사") @RequestParam("url") String url,
+            @Parameter(description = "뉴스기사") @RequestParam(value = "url", required = false) String url,
             @Parameter(description = "첨부파일") @RequestParam(value = "imageFile", required = false) MultipartFile imageFile,
             @Parameter(hidden = true) @AuthenticationPrincipal Long memberId) {
 
