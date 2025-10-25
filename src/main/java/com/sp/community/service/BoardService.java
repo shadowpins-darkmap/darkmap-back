@@ -277,6 +277,34 @@ public class BoardService {
     }
 
     /**
+     * 최근 게시글 목록 조회 (페이징 및 게시글 수 포함)
+     */
+    public BoardListVO getRecentBoardList(PageRequestDTO pageRequestDTO) {
+        log.debug("최근 게시글 목록 조회 (페이징)");
+
+        if (pageRequestDTO != null) {
+            pageRequestDTO.setDefaults();
+        }
+
+        Pageable pageable = pageRequestDTO != null ?
+                pageRequestDTO.toBoardPageable() :
+                PageRequestDTO.builder().build().toBoardPageable();
+
+        // 최근 게시글 조회 (사건제보는 승인된 것만)
+        Page<BoardEntity> boardPage = boardRepository.findRecentBoards(null, pageable);
+
+        List<BoardVO> boardVOs = boardPage.getContent().stream()
+                .map(this::convertToVO)
+                .collect(Collectors.toList());
+
+        return BoardListVO.builder()
+                .boards(boardVOs)
+                .pageInfo(createPageInfo(boardPage))
+                .searchInfo(null)  // 검색 조건 없음
+                .build();
+    }
+
+    /**
      * 사용자별 게시글 조회
      */
     public BoardListVO getUserBoards(Long authorId, PageRequestDTO pageRequestDTO) {

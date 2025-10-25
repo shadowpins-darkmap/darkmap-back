@@ -241,4 +241,14 @@ public interface BoardRepository extends JpaRepository<BoardEntity, Long> {
             "AND b.isDeleted = false " +
             "AND (b.category <> 'INCIDENTREPORT' OR b.reportApproved = true)")
     List<BoardEntity> searchByKeyword(@Param("keyword") String keyword);
+
+    /**
+     * 최근 게시글 조회 (사건제보는 승인된 것만 포함)
+     */
+    @Query("SELECT b FROM BoardEntity b WHERE " +
+            "b.isDeleted = false " +
+            "AND (:category IS NULL OR b.category = :category) " +
+            "AND (b.category <> 'INCIDENTREPORT' OR b.reportApproved = true) " +
+            "ORDER BY b.createdAt DESC")
+    Page<BoardEntity> findRecentBoards(@Param("category") String category, Pageable pageable);
 }

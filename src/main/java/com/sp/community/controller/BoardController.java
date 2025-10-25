@@ -759,8 +759,8 @@ public class BoardController {
                     )
             )
     })
-    @GetMapping("/recent")
-    public ResponseEntity<CommonApiResponse<List<BoardVO>>> getRecentBoards(
+    @GetMapping("/recent_")
+    public ResponseEntity<CommonApiResponse<List<BoardVO>>> getRecentBoards_(
             @Parameter(description = "조회할 게시글 수", example = "10") @RequestParam(defaultValue = "10") int limit) {
 
         log.info("최근 게시글 조회: limit={}", limit);
@@ -769,6 +769,73 @@ public class BoardController {
 
         return ResponseEntity.ok(
                 CommonApiResponse.<List<BoardVO>>builder()
+                        .success(true)
+                        .message("최근 게시글 조회 성공")
+                        .data(recentBoards)
+                        .build()
+        );
+    }
+
+    /**
+     * 최근 게시글 조회
+     */
+    @Operation(
+            summary = "최근 게시글 조회",
+            description = "가장 최근에 작성된 게시글 목록을 페이징하여 조회합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "최근 게시글 조회 성공",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    value = """
+                    {
+                        "success": true,
+                        "message": "최근 게시글 조회 성공",
+                        "data": {
+                            "boards": [
+                                {
+                                    "boardId": 10,
+                                    "title": "방금 작성한 게시글",
+                                    "content": "최신 게시글입니다.",
+                                    "authorId": 6,
+                                    "authorNickname": "사용자789",
+                                    "viewCount": 5,
+                                    "likeCount": 0,
+                                    "commentCount": 0,
+                                    "createdAt": "2024-01-15 15:30:00"
+                                }
+                            ],
+                            "pageInfo": {
+                                "currentPage": 0,
+                                "pageSize": 20,
+                                "totalElements": 150,
+                                "totalPages": 8,
+                                "hasNext": true,
+                                "hasPrevious": false,
+                                "isFirst": true,
+                                "isLast": false
+                            }
+                        }
+                    }
+                    """
+                            )
+                    )
+            )
+    })
+    @GetMapping("/recent")
+    public ResponseEntity<CommonApiResponse<BoardListVO>> getRecentBoards(
+            @Parameter(description = "페이징 정보") @ModelAttribute PageRequestDTO pageRequestDTO) {
+
+        log.info("최근 게시글 조회: page={}, size={}",
+                pageRequestDTO.getPage(), pageRequestDTO.getSize());
+
+        BoardListVO recentBoards = boardService.getRecentBoardList(pageRequestDTO);
+
+        return ResponseEntity.ok(
+                CommonApiResponse.<BoardListVO>builder()
                         .success(true)
                         .message("최근 게시글 조회 성공")
                         .data(recentBoards)
