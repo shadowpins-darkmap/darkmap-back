@@ -3,16 +3,24 @@ package com.sp.auth.external;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sp.auth.model.vo.KakaoUserInfo;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.*;
 import org.springframework.stereotype.Component;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.RestTemplate;
 
-import java.io.*;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.net.URLEncoder;
+import java.util.Map;
 
+@Slf4j
 @Component
+@RequiredArgsConstructor
 public class KakaoOAuthClient {
+
+    private final RestTemplate restTemplate;
+    private final ObjectMapper objectMapper;
 
     @Value("${kakao.client-id}")
     private String clientId;
@@ -25,75 +33,74 @@ public class KakaoOAuthClient {
 
     public String getAccessToken(String code) {
         try {
-            URL url = new URL(tokenUri);
-            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-            conn.setRequestMethod("POST");
-            conn.setDoOutput(true);
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
 
-            String params = "grant_type=authorization_code"
-                    + "&client_id=" + clientId
-                    + "&redirect_uri=" + URLEncoder.encode(redirectUri, "UTF-8")
-                    + "&code=" + code;
+            MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+            params.add("grant_type", "authorization_code");
+            params.add("client_id", clientId);
+            params.add("redirect_uri", redirectUri);
+            params.add("code", code);
 
-            try (BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(conn.getOutputStream()))) {
-                bw.write(params);
-                bw.flush();
+            HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(params, headers);
+
+            ResponseEntity<Map> response = restTemplate.postForEntity(tokenUri, request, Map.class);
+
+            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
+                return (String) response.getBody().get("access_token");
             }
 
-            StringBuilder result = new StringBuilder();
-            try (BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream()))) {
-                String line;
-                while ((line = br.readLine()) != null) {
-                    result.append(line);
-                }
-            }
+            throw new RuntimeException("카카오 토큰 요청 실패");
 
-            ObjectMapper mapper = new ObjectMapper();
-            JsonNode rootNode = mapper.readTree(result.toString());
-            return rootNode.get("access_token").asText();
-
-        } catch (IOException e) {
+        } catch (Exception e) {
+            log.error("카카오 토큰 요청 실패", e);
             throw new RuntimeException("카카오 토큰 요청 실패", e);
         }
     }
 
     public KakaoUserInfo getUserInfo(String accessToken) {
         try {
-            URL url = new URL("https://kapi.kakao.com/v2/user/me");
-            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-            conn.setRequestMethod("GET");
-            conn.setRequestProperty("Authorization", "Bearer " + accessToken);
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("Authorization", "Bearer " + accessToken);
 
-            BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-            StringBuilder response = new StringBuilder();
-            String line;
-            while ((line = br.readLine()) != null) {
-                response.append(line);
-            }
+            HttpEntity<String> request = new HttpEntity<>(headers);
 
-            ObjectMapper mapper = new ObjectMapper();
-            JsonNode json = mapper.readTree(response.toString());
+            ResponseEntity<String> response = restTemplate.exchange(
+                    "https://kapi.kakao.com/v2/user/me",
+                    HttpMethod.GET,
+                    request,
+                    String.class
+            );
 
+            JsonNode json = objectMapper.readTree(response.getBody());
             String email = json.get("kakao_account").get("email").asText();
             String userId = json.get("id").asText();
 
             return new KakaoUserInfo(email, userId);
-        } catch (IOException e) {
+
+        } catch (Exception e) {
+            log.error("사용자 정보 조회 실패", e);
             throw new RuntimeException("사용자 정보 조회 실패", e);
         }
     }
 
     public void unlink(String accessToken) {
         try {
-            URL url = new URL("https://kapi.kakao.com/v1/user/unlink");
-            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-            conn.setRequestMethod("POST");
-            conn.setRequestProperty("Authorization", "Bearer " + accessToken);
-            conn.getInputStream().close();
-        } catch (IOException e) {
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("Authorization", "Bearer " + accessToken);
+
+            HttpEntity<String> request = new HttpEntity<>(headers);
+
+            restTemplate.exchange(
+                    "https://kapi.kakao.com/v1/user/unlink",
+                    HttpMethod.POST,
+                    request,
+                    Void.class
+            );
+
+        } catch (Exception e) {
+            log.error("카카오 연동 해제 실패", e);
             throw new RuntimeException("카카오 연동 해제 실패", e);
         }
     }
-
 }
-

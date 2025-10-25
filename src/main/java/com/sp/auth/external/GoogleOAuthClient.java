@@ -1,22 +1,22 @@
 package com.sp.auth.external;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.*;
 import org.springframework.stereotype.Component;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.RestTemplate;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.net.URLEncoder;
+import java.util.Map;
 
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class GoogleOAuthClient {
+
+    private final RestTemplate restTemplate;
 
     @Value("${spring.security.oauth2.client.registration.google.client-id}")
     private String clientId;
@@ -29,42 +29,31 @@ public class GoogleOAuthClient {
      */
     public String refreshAccessToken(String refreshToken) {
         try {
-            URL url = new URL("https://oauth2.googleapis.com/token");
-            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-            conn.setRequestMethod("POST");
-            conn.setDoOutput(true);
-            conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
 
-            String params = "grant_type=refresh_token"
-                    + "&client_id=" + URLEncoder.encode(clientId, "UTF-8")
-                    + "&client_secret=" + URLEncoder.encode(clientSecret, "UTF-8")
-                    + "&refresh_token=" + URLEncoder.encode(refreshToken, "UTF-8");
+            MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+            params.add("grant_type", "refresh_token");
+            params.add("client_id", clientId);
+            params.add("client_secret", clientSecret);
+            params.add("refresh_token", refreshToken);
 
-            try (OutputStream os = conn.getOutputStream()) {
-                byte[] input = params.getBytes("utf-8");
-                os.write(input, 0, input.length);
-            }
+            HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(params, headers);
 
-            int responseCode = conn.getResponseCode();
+            ResponseEntity<Map> response = restTemplate.postForEntity(
+                    "https://oauth2.googleapis.com/token",
+                    request,
+                    Map.class
+            );
 
-            if (responseCode == 200) {
-                try (BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream()))) {
-                    StringBuilder response = new StringBuilder();
-                    String line;
-                    while ((line = br.readLine()) != null) {
-                        response.append(line);
-                    }
-
-                    ObjectMapper mapper = new ObjectMapper();
-                    JsonNode rootNode = mapper.readTree(response.toString());
-                    return rootNode.get("access_token").asText();
-                }
+            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
+                return (String) response.getBody().get("access_token");
             } else {
-                log.error("액세스 토큰 갱신 실패. 응답 코드: {}", responseCode);
+                log.error("액세스 토큰 갱신 실패. 응답 코드: {}", response.getStatusCode());
                 return null;
             }
 
-        } catch (IOException e) {
+        } catch (Exception e) {
             log.error("액세스 토큰 갱신 중 오류", e);
             return null;
         }
@@ -104,40 +93,29 @@ public class GoogleOAuthClient {
      */
     public boolean revokeToken(String token) {
         try {
-            URL url = new URL("https://oauth2.googleapis.com/revoke");
-            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-            conn.setRequestMethod("POST");
-            conn.setDoOutput(true);
-            conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
 
-            String params = "token=" + URLEncoder.encode(token, "UTF-8");
+            MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+            params.add("token", token);
 
-            try (OutputStream os = conn.getOutputStream()) {
-                byte[] input = params.getBytes("utf-8");
-                os.write(input, 0, input.length);
-            }
+            HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(params, headers);
 
-            int responseCode = conn.getResponseCode();
+            ResponseEntity<Void> response = restTemplate.postForEntity(
+                    "https://oauth2.googleapis.com/revoke",
+                    request,
+                    Void.class
+            );
 
-            if (responseCode == 200) {
+            if (response.getStatusCode() == HttpStatus.OK) {
                 log.info("구글 토큰 revoke 성공");
                 return true;
             } else {
-                log.warn("구글 토큰 revoke 실패. 응답 코드: {}", responseCode);
-
-                // 에러 응답 읽기
-                try (BufferedReader br = new BufferedReader(new InputStreamReader(conn.getErrorStream()))) {
-                    StringBuilder response = new StringBuilder();
-                    String line;
-                    while ((line = br.readLine()) != null) {
-                        response.append(line);
-                    }
-                    log.warn("구글 토큰 revoke 에러 응답: {}", response.toString());
-                }
+                log.warn("구글 토큰 revoke 실패. 응답 코드: {}", response.getStatusCode());
                 return false;
             }
 
-        } catch (IOException e) {
+        } catch (Exception e) {
             log.error("구글 토큰 revoke 실패", e);
             return false;
         }
@@ -147,6 +125,6 @@ public class GoogleOAuthClient {
      * 구글 리프레시 토큰 revoke (연동 해제)
      */
     public boolean revokeRefreshToken(String refreshToken) {
-        return revokeToken(refreshToken); // 같은 API 사용
+        return revokeToken(refreshToken);
     }
 }
