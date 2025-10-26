@@ -245,7 +245,7 @@ public class MemberController {
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "429",
-                    description = "변경 제한 (횟수 초과 또는 기간 제한)",
+                    description = "변경 제한 (횟수 초과)",
                     content = @Content(
                             mediaType = "application/json",
                             examples = @ExampleObject(
@@ -254,6 +254,22 @@ public class MemberController {
                                   "success": false,
                                   "error": "닉네임 변경 횟수를 모두 사용했습니다. (최대 3회)",
                                   "code": "NICKNAME_MAX_COUNT_REACHED"
+                                }
+                                """
+                            )
+                    )
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "429",
+                    description = "변경 제한 (기간 제한)",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    value = """
+                                {
+                                  "success": false,
+                                  "error": "닉네임은 30일마다 변경 가능합니다. 다음 변경 가능일: %s",
+                                  "code": "NICKNAME_CHANGE_TOO_SOON"
                                 }
                                 """
                             )
