@@ -27,7 +27,7 @@ public class NicknameChangeException extends RuntimeException {
         String formattedDate = nextAvailableAt.format(formatter);
 
         return new NicknameChangeException(
-                String.format("닉네임은 30일마다 변경 가능합니다. 다음 변경 가능일: %s", formattedDate),
+                String.format("닉네임은 30일마다 변경 가능합니다. \n다음 변경 가능일: %s", formattedDate),
                 "NICKNAME_CHANGE_TOO_SOON"
         );
     }

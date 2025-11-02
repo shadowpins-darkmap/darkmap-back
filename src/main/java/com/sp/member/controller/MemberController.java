@@ -268,7 +268,7 @@ public class MemberController {
                                     value = """
                                 {
                                   "success": false,
-                                  "error": "닉네임은 30일마다 변경 가능합니다. 다음 변경 가능일: %s",
+                                  "error": "닉네임은 30일마다 변경 가능합니다. \n다음 변경 가능일: %s",
                                   "code": "NICKNAME_CHANGE_TOO_SOON"
                                 }
                                 """
