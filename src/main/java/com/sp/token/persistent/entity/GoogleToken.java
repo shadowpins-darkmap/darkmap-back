@@ -1,16 +1,14 @@
 package com.sp.token.persistent.entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.time.Instant;
 
 @Entity
 @Table(name = "google_token")
 @Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder

@@ -26,44 +26,39 @@ public class MemberService {
     @Transactional
     public Member saveIfNotExists(String email, String userId, AuthType type) {
         long startTime = System.currentTimeMillis();
-        log.info("saveIfNotExists 시작 - email: {}", email);
+        log.info("💾 회원 저장 시작 - email: {}, type: {}", email, type);
 
-        // 1. 기존 회원 조회 시간 측정
-        long queryStart = System.currentTimeMillis();
+        // 1. 기존 회원 조회
         Optional<Member> emailExists = memberRepository.findByEmail(email);
-        log.info("DB 조회 완료: {}ms", System.currentTimeMillis() - queryStart);
 
         if (emailExists.isPresent()) {
             Member existing = emailExists.get();
 
-            // 로그인 횟수 카운트
+            // 동일한 소셜 로그인 계정인 경우
             if (existing.getType() == type && existing.getMemberId().equals(userId)) {
                 existing.increaseLoginVisitCount();
-
-                long saveStart = System.currentTimeMillis();
                 Member saved = memberRepository.save(existing);
-                log.info("기존 회원 업데이트 완료: {}ms", System.currentTimeMillis() - saveStart);
-                log.info("saveIfNotExists 총 소요: {}ms", System.currentTimeMillis() - startTime);
+
+                log.info("✅ 기존 회원 로그인 완료 - ID: {}, 소요시간: {}ms",
+                        saved.getId(), System.currentTimeMillis() - startTime);
                 return saved;
             }
 
-            // 이메일은 같은데 다른 소셜 로그인일 경우
+            // 이메일은 같은데 다른 소셜 로그인인 경우
+            log.error("❌ 중복 이메일 - 기존: {}, 시도: {}", existing.getType(), type);
             throw new IllegalStateException("이미 다른 소셜 로그인으로 가입된 이메일입니다.");
         }
 
-        long countStart = System.currentTimeMillis();
+        // 2. 신규 회원 가입 - userNumber 조회 (최적화: 필요할 때만)
         Integer lastUserNumber = memberRepository.findMaxUserNumber();
         int userNumber = (lastUserNumber != null ? lastUserNumber : 0) + 1;
-
-        log.info("userNumber 조회 완료: {}ms (userNumber: {})",
-                System.currentTimeMillis() - countStart, userNumber);
-
         String nickname = NicknameGenerator.generateNickname(userNumber);
 
-        long saveStart = System.currentTimeMillis();
+        // 3. 회원 저장
         Member newMember = memberRepository.save(Member.builder()
                 .email(email)
                 .memberId(userId)
+                .userNumber(userNumber)
                 .nickname(nickname)
                 .type(type)
                 .level("BASIC")
@@ -72,8 +67,8 @@ public class MemberService {
                 .isDeleted(Boolean.FALSE)
                 .build());
 
-        log.info("회원 가입 완료: {}ms", System.currentTimeMillis() - saveStart);
-        log.info("saveIfNotExists 총 소요: {}ms", System.currentTimeMillis() - startTime);
+        log.info("✅ 신규 회원 가입 완료 - ID: {}, userNumber: {}, 소요시간: {}ms",
+                newMember.getId(), userNumber, System.currentTimeMillis() - startTime);
 
         return newMember;
     }
@@ -84,14 +79,14 @@ public class MemberService {
 
     @Transactional
     public void withdraw(Long id) {
-        log.info("회원 탈퇴 처리 시작 - 사용자 ID: {}", id);
+        log.info("🗑️ 회원 탈퇴 처리 시작 - 사용자 ID: {}", id);
 
         Optional<Member> memberOpt = memberRepository.findById(id);
         if (memberOpt.isPresent()) {
             Member member = memberOpt.get();
 
             if (member.getIsDeleted()) {
-                log.warn("이미 탈퇴한 회원 - 사용자 ID: {}", id);
+                log.warn("⚠️ 이미 탈퇴한 회원 - 사용자 ID: {}", id);
                 throw new IllegalStateException("이미 탈퇴한 회원입니다.");
             }
 
@@ -99,9 +94,9 @@ public class MemberService {
             member.setIsDeleted(true);
             memberRepository.save(member);
 
-            log.info("회원 탈퇴 처리 완료 - 사용자 ID: {}, 이메일: {}", id, member.getEmail());
+            log.info("✅ 회원 탈퇴 완료 - 사용자 ID: {}, 이메일: {}", id, member.getEmail());
         } else {
-            log.error("탈퇴 처리 실패: 존재하지 않는 회원 - 사용자 ID: {}", id);
+            log.error("❌ 탈퇴 실패: 존재하지 않는 회원 - 사용자 ID: {}", id);
             throw new IllegalArgumentException("존재하지 않는 회원입니다.");
         }
     }
@@ -109,6 +104,7 @@ public class MemberService {
     /**
      * 마케팅 동의 상태 토글
      */
+    @Transactional
     public MemberInfoResponse toggleMarketingAgreementById(Long id) {
         Member member = findMemberByPrimaryKey(id);
 
@@ -116,16 +112,17 @@ public class MemberService {
         boolean newStatus = !oldStatus;
         member.updateMarketingAgreement(newStatus);
 
-        log.info("Marketing agreement toggled - id: {}, memberId: {}, {} -> {}",
-                id, member.getMemberId(), oldStatus, newStatus);
+        log.info("📧 마케팅 동의 상태 변경 - ID: {}, {} -> {}", id, oldStatus, newStatus);
 
         return MemberInfoResponse.from(member);
     }
+
     private Member findMemberByPrimaryKey(Long id) {
         return memberRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다: " + id));
     }
 
+    @Transactional
     public Member updateNickname(Long memberId, String newNickname) {
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
@@ -154,9 +151,8 @@ public class MemberService {
         return memberRepository.save(member);
     }
 
-
     public long getTotalMemberCount() {
-        return memberRepository.count(); // 탈퇴한 회원도 카운트 수에 포함
+        return memberRepository.count();
     }
 
     @Transactional(readOnly = true)

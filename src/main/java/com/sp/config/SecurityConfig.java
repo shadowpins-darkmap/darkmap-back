@@ -124,7 +124,7 @@ public class SecurityConfig {
 
         config.setAllowCredentials(true);
         config.setMaxAge(3600L);
-
+        config.setAllowCredentials(true); // 쿠키
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
         return source;

@@ -19,13 +19,23 @@ public class GoogleTokenService {
 
     @Transactional
     public void saveTokens(Long memberId, String accessToken, String refreshToken, Instant expiresAt) {
-        // 기존 토큰 삭제 후 새로 저장
-        repository.deleteByMemberId(memberId);
+        // 기존 토큰이 있으면 업데이트, 없으면 새로 생성 (upsert 패턴)
+        Optional<GoogleToken> existingToken = repository.findByMemberId(memberId);
 
-        GoogleToken googleToken = new GoogleToken(memberId, accessToken, refreshToken, expiresAt);
-        repository.save(googleToken);
-
-        log.info("구글 토큰 저장 완료 - 사용자 ID: {}, 만료시간: {}", memberId, expiresAt);
+        if (existingToken.isPresent()) {
+            // 기존 토큰 업데이트
+            GoogleToken token = existingToken.get();
+            token.setAccessToken(accessToken);
+            token.setRefreshToken(refreshToken);
+            token.setExpiresAt(expiresAt);
+            repository.save(token);
+            log.info("구글 토큰 업데이트 완료 - 사용자 ID: {}, 만료시간: {}", memberId, expiresAt);
+        } else {
+            // 새 토큰 생성
+            GoogleToken googleToken = new GoogleToken(memberId, accessToken, refreshToken, expiresAt);
+            repository.save(googleToken);
+            log.info("구글 토큰 저장 완료 - 사용자 ID: {}, 만료시간: {}", memberId, expiresAt);
+        }
     }
 
     public Optional<GoogleToken> findByMemberId(Long memberId) {

@@ -2,6 +2,7 @@ package com.sp.auth.external;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sp.auth.model.vo.KakaoTokenResponse;
 import com.sp.auth.model.vo.KakaoUserInfo;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,7 +32,10 @@ public class KakaoOAuthClient {
     @Value("${kakao.redirect-uri}")
     private String redirectUri;
 
-    public String getAccessToken(String code) {
+    /**
+     * 카카오 액세스 토큰 및 만료 정보 조회
+     */
+    public KakaoTokenResponse getTokenResponse(String code) {
         try {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
@@ -47,7 +51,17 @@ public class KakaoOAuthClient {
             ResponseEntity<Map> response = restTemplate.postForEntity(tokenUri, request, Map.class);
 
             if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
-                return (String) response.getBody().get("access_token");
+                Map<String, Object> body = response.getBody();
+
+                String accessToken = (String) body.get("access_token");
+                String refreshToken = (String) body.get("refresh_token");
+                Integer expiresIn = (Integer) body.get("expires_in"); // 초 단위
+
+                return KakaoTokenResponse.builder()
+                        .accessToken(accessToken)
+                        .refreshToken(refreshToken)
+                        .expiresIn(expiresIn)
+                        .build();
             }
 
             throw new RuntimeException("카카오 토큰 요청 실패");
@@ -56,6 +70,14 @@ public class KakaoOAuthClient {
             log.error("카카오 토큰 요청 실패", e);
             throw new RuntimeException("카카오 토큰 요청 실패", e);
         }
+    }
+
+    /**
+     * 기존 호환성을 위한 메서드 (Deprecated)
+     */
+    @Deprecated
+    public String getAccessToken(String code) {
+        return getTokenResponse(code).getAccessToken();
     }
 
     public KakaoUserInfo getUserInfo(String accessToken) {
@@ -98,8 +120,10 @@ public class KakaoOAuthClient {
                     Void.class
             );
 
+            log.info("✅ 카카오 연동 해제 성공");
+
         } catch (Exception e) {
-            log.error("카카오 연동 해제 실패", e);
+            log.error("❌ 카카오 연동 해제 실패", e);
             throw new RuntimeException("카카오 연동 해제 실패", e);
         }
     }
