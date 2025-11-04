@@ -5,6 +5,7 @@ import com.sp.auth.model.vo.AuthResponse;
 import com.sp.auth.model.vo.WithdrawRequest;
 import com.sp.auth.service.AuthService;
 import com.sp.config.EnvironmentConfig;
+import com.sp.config.EnvironmentResolver;
 import com.sp.exception.WithdrawnMemberException;
 import com.sp.member.service.MemberService;
 import com.sp.member.persistent.entity.Member;
@@ -12,7 +13,6 @@ import com.sp.member.model.type.AuthType;
 import com.sp.token.service.KakaoTokenService;
 import com.sp.token.service.RefreshTokenService;
 import com.sp.token.service.TokenBlacklistService;
-import com.sp.util.EnvironmentUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -30,12 +30,15 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
 
 @Tag(name = "Authentication", description = "인증 관리 API - 카카오/구글 소셜 로그인, 로그아웃, 토큰 갱신, 회원 탈퇴 기능을 제공합니다.")
 @Slf4j
@@ -50,6 +53,12 @@ public class AuthController {
     private final JwtTokenProvider jwtTokenProvider;
     private final TokenBlacklistService tokenBlacklistService;
     private final KakaoTokenService kakaoTokenService;
+    private final EnvironmentResolver environmentResolver;
+
+    private static final String REFRESH_COOKIE = "refresh_token";
+    private static final String ACCESS_COOKIE = "access_token";
+    private static final String OAUTH_STATE_COOKIE = "oauth_state";
+    private static final String OAUTH_REDIRECT_COOKIE = "oauth_redirect";
 
     /**
      * 카카오 로그인 - 카카오 인증 페이지로 리다이렉트
@@ -65,8 +74,18 @@ public class AuthController {
             )
     })
     @GetMapping("/login/kakao")
-    public void redirectToKakao(HttpServletResponse response) throws IOException {
-        String redirectUrl = authService.getKakaoAuthorizeUrl();
+    public void redirectToKakao(
+            @RequestParam(value = "redirectUri", required = false) String redirectOverride,
+            HttpServletRequest request,
+            HttpServletResponse response) throws IOException {
+
+        EnvironmentConfig envConfig = environmentResolver.resolve(request, redirectOverride);
+        String state = UUID.randomUUID().toString();
+
+        persistEphemeralCookie(response, envConfig, OAUTH_STATE_COOKIE, state, Duration.ofMinutes(10));
+        persistEphemeralCookie(response, envConfig, OAUTH_REDIRECT_COOKIE, envConfig.getFrontendUrl(), Duration.ofMinutes(10));
+
+        String redirectUrl = authService.getKakaoAuthorizeUrl(state);
         response.sendRedirect(redirectUrl);
     }
 
@@ -100,18 +119,24 @@ public class AuthController {
     @GetMapping("/login/kakao/callback")
     public void kakaoCallback(
             @Parameter(description = "카카오 인증 코드", required = true) @RequestParam String code,
+            @RequestParam(value = "state", required = false) String state,
             HttpServletRequest request,
             HttpServletResponse response) throws IOException {
+
+        String redirectPreference = getCookieValue(request, OAUTH_REDIRECT_COOKIE).orElse(null);
+        EnvironmentConfig envConfig = environmentResolver.resolve(request, redirectPreference);
+
+        if (!validateState(request, state)) {
+            redirectWithError(response, envConfig, "INVALID_STATE");
+            return;
+        }
+
         try {
             AuthResponse authResponse = authService.loginWithKakao(code);
-            setTokensAndRedirect(authResponse, response, request);
+            setTokensAndRedirect(authResponse, response, envConfig);
         } catch (WithdrawnMemberException e) {
             // 탈퇴 회원
-            EnvironmentConfig envConfig = EnvironmentUtil.determineEnvironment(request);
-            String redirectUrl = envConfig.getFrontendUrl() +
-                    "/social-redirect-kakao?success=false&error=WITHDRAWN_MEMBER";
-            log.warn("🚫 탈퇴 회원 로그인 차단 - 리다이렉트: {}", redirectUrl);
-            response.sendRedirect(redirectUrl);
+            redirectWithError(response, envConfig, "WITHDRAWN_MEMBER");
         }
     }
 
@@ -200,6 +225,7 @@ public class AuthController {
             HttpServletRequest httpRequest,
             HttpServletResponse response) {
         try {
+            EnvironmentConfig envConfig = environmentResolver.resolve(httpRequest);
             Member member = memberService.findById(id);
             if (member == null || member.getIsDeleted()) {
                 return ResponseEntity.status(404).body(Map.of("error", "사용자를 찾을 수 없습니다."));
@@ -223,7 +249,7 @@ public class AuthController {
             refreshTokenService.deleteByMemberId(id);
             kakaoTokenService.deleteByMemberId(id);
 
-            clearTokenCookies(response, httpRequest);
+            clearTokenCookies(response, envConfig);
 
             log.info("✅ 카카오 탈퇴 완료 - 사용자 ID: {}", id);
             return ResponseEntity.ok().body(Map.of("message", "카카오 탈퇴가 완료되었습니다."));
@@ -289,6 +315,7 @@ public class AuthController {
             HttpServletRequest httpRequest,
             HttpServletResponse response) {
         try {
+            EnvironmentConfig envConfig = environmentResolver.resolve(httpRequest);
             Member member = memberService.findById(id);
             if (member == null || member.getIsDeleted()) {
                 return ResponseEntity.status(404).body(Map.of("error", "사용자를 찾을 수 없습니다."));
@@ -311,7 +338,7 @@ public class AuthController {
             memberService.withdraw(id);
             refreshTokenService.deleteByMemberId(id);
 
-            clearTokenCookies(response, httpRequest);
+            clearTokenCookies(response, envConfig);
 
             log.info("✅ 구글 탈퇴 완료 - 사용자 ID: {}", id);
             return ResponseEntity.ok().body(Map.of("message", "구글 탈퇴가 완료되었습니다."));
@@ -387,6 +414,7 @@ public class AuthController {
             HttpServletRequest request,
             HttpServletResponse response) {
         try {
+            EnvironmentConfig envConfig = environmentResolver.resolve(request);
             // JWT 토큰 블랙리스트 처리
             String token = getTokenFromRequest(request);
             if (token != null) {
@@ -394,7 +422,7 @@ public class AuthController {
             }
 
             refreshTokenService.deleteByMemberId(id);
-            clearTokenCookies(response, request);
+            clearTokenCookies(response, envConfig);
 
             log.info("✅ 로그아웃 완료 - 사용자 ID: {}", id);
             return ResponseEntity.ok().body(Map.of("message", "로그아웃이 완료되었습니다."));
@@ -521,6 +549,9 @@ public class AuthController {
             }
 
             String newAccessToken = jwtTokenProvider.createAccessToken(memberId, member.getLevel());
+            EnvironmentConfig envConfig = environmentResolver.resolve(request);
+            addTokenCookie(response, ACCESS_COOKIE, newAccessToken,
+                    Duration.ofMillis(jwtTokenProvider.getExpirationTime()), envConfig);
 
             log.info("✅ 토큰 갱신 완료 - 사용자 ID: {}", memberId);
 
@@ -535,67 +566,115 @@ public class AuthController {
         }
     }
 
-    private void setTokensAndRedirect(AuthResponse authResponse, HttpServletResponse response, HttpServletRequest request) throws IOException {
-        EnvironmentConfig envConfig = EnvironmentUtil.determineEnvironment(request);
-
+    private void setTokensAndRedirect(AuthResponse authResponse, HttpServletResponse response, EnvironmentConfig envConfig) throws IOException {
         log.info("Environment detected - Frontend: {}, Cookie Domain: {}, Is Local: {}",
                 envConfig.getFrontendUrl(), envConfig.getCookieDomain(), envConfig.isLocal());
 
-        String refreshToken = authResponse.getRefreshToken();
-        if (refreshToken != null) {
-            ResponseCookie.ResponseCookieBuilder cookieBuilder = ResponseCookie.from("refresh_token", refreshToken)
-                    .httpOnly(true)
-                    .secure(!envConfig.isLocal())
-                    .path("/")
-                    .maxAge(Duration.ofDays(7));
+        addTokenCookie(response, REFRESH_COOKIE, authResponse.getRefreshToken(), Duration.ofDays(7), envConfig);
+        addTokenCookie(response, ACCESS_COOKIE, authResponse.getJwtToken(),
+                Duration.ofMillis(jwtTokenProvider.getExpirationTime()), envConfig);
+        clearEphemeralCookies(response, envConfig);
 
-            if (!envConfig.isLocal()) {
-                cookieBuilder.domain(envConfig.getCookieDomain());
-                cookieBuilder.sameSite("None");
-            } else {
-                cookieBuilder.sameSite("Lax");
-            }
-
-            ResponseCookie refreshCookie = cookieBuilder.build();
-            response.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
-        }
-
-        String redirectUrl = envConfig.getFrontendUrl() + "/social-redirect-kakao?success=true&token=" + authResponse.getJwtToken();
+        String redirectUrl = envConfig.getFrontendUrl() + "/social-redirect-kakao?success=true";
         log.info("Redirecting to: {}", redirectUrl);
         response.sendRedirect(redirectUrl);
     }
 
-    private void clearTokenCookies(HttpServletResponse response, HttpServletRequest request) {
-        EnvironmentConfig envConfig = (request != null)
-                ? EnvironmentUtil.determineEnvironment(request)
-                : new EnvironmentConfig("https://kdark.weareshadowpins.co.kr", "api.kdark.weareshadowpins.com", false);
-
-        ResponseCookie.ResponseCookieBuilder cookieBuilder = ResponseCookie.from("refresh_token", "")
-                .path("/")
-                .maxAge(0)
-                .httpOnly(true)
-                .secure(!envConfig.isLocal());
-
-        if (!envConfig.isLocal()) {
-            cookieBuilder.domain(envConfig.getCookieDomain());
-            cookieBuilder.sameSite("None");
-        } else {
-            cookieBuilder.sameSite("Lax");
-        }
-
-        ResponseCookie clearRefreshCookie = cookieBuilder.build();
-        response.addHeader(HttpHeaders.SET_COOKIE, clearRefreshCookie.toString());
+    private void clearTokenCookies(HttpServletResponse response, EnvironmentConfig envConfig) {
+        clearCookie(response, REFRESH_COOKIE, envConfig);
+        clearCookie(response, ACCESS_COOKIE, envConfig);
     }
 
     private String getRefreshTokenFromCookie(HttpServletRequest request) {
         Cookie[] cookies = request.getCookies();
         if (cookies != null) {
             return Arrays.stream(cookies)
-                    .filter(cookie -> "refresh_token".equals(cookie.getName()))
+                    .filter(cookie -> REFRESH_COOKIE.equals(cookie.getName()))
                     .map(Cookie::getValue)
                     .findFirst()
                     .orElse(null);
         }
         return null;
+    }
+
+    private Optional<String> getCookieValue(HttpServletRequest request, String name) {
+        Cookie[] cookies = request.getCookies();
+        if (cookies == null) {
+            return Optional.empty();
+        }
+        return Arrays.stream(cookies)
+                .filter(cookie -> name.equals(cookie.getName()))
+                .map(Cookie::getValue)
+                .findFirst()
+                .filter(StringUtils::hasText);
+    }
+
+    private void addTokenCookie(HttpServletResponse response, String name, String value, Duration maxAge, EnvironmentConfig envConfig) {
+        if (!StringUtils.hasText(value)) {
+            return;
+        }
+        addCookie(response, name, value, maxAge, true, envConfig);
+    }
+
+    private void persistEphemeralCookie(HttpServletResponse response, EnvironmentConfig envConfig, String name, String value, Duration maxAge) {
+        if (!StringUtils.hasText(value)) {
+            return;
+        }
+        addCookie(response, name, value, maxAge, true, envConfig);
+    }
+
+    private void addCookie(HttpServletResponse response, String name, String value, Duration maxAge, boolean httpOnly, EnvironmentConfig envConfig) {
+        ResponseCookie.ResponseCookieBuilder builder = ResponseCookie.from(name, value)
+                .path("/")
+                .httpOnly(httpOnly)
+                .secure(!envConfig.isLocal())
+                .maxAge(maxAge);
+
+        if (!envConfig.isLocal() && StringUtils.hasText(envConfig.getCookieDomain())) {
+            builder.domain(envConfig.getCookieDomain());
+            builder.sameSite("None");
+        } else {
+            builder.sameSite("Lax");
+        }
+
+        response.addHeader(HttpHeaders.SET_COOKIE, builder.build().toString());
+    }
+
+    private void clearCookie(HttpServletResponse response, String name, EnvironmentConfig envConfig) {
+        ResponseCookie.ResponseCookieBuilder builder = ResponseCookie.from(name, "")
+                .path("/")
+                .maxAge(0)
+                .httpOnly(true)
+                .secure(!envConfig.isLocal());
+
+        if (!envConfig.isLocal() && StringUtils.hasText(envConfig.getCookieDomain())) {
+            builder.domain(envConfig.getCookieDomain());
+            builder.sameSite("None");
+        } else {
+            builder.sameSite("Lax");
+        }
+
+        response.addHeader(HttpHeaders.SET_COOKIE, builder.build().toString());
+    }
+
+    private void clearEphemeralCookies(HttpServletResponse response, EnvironmentConfig envConfig) {
+        clearCookie(response, OAUTH_STATE_COOKIE, envConfig);
+        clearCookie(response, OAUTH_REDIRECT_COOKIE, envConfig);
+    }
+
+    private boolean validateState(HttpServletRequest request, String incomingState) {
+        if (!StringUtils.hasText(incomingState)) {
+            return false;
+        }
+        return getCookieValue(request, OAUTH_STATE_COOKIE)
+                .map(stored -> stored.equals(incomingState))
+                .orElse(false);
+    }
+
+    private void redirectWithError(HttpServletResponse response, EnvironmentConfig envConfig, String errorCode) throws IOException {
+        String redirectUrl = envConfig.getFrontendUrl() + "/social-redirect-kakao?success=false&error=" + errorCode;
+        log.warn("OAuth redirect with error {} -> {}", errorCode, redirectUrl);
+        clearEphemeralCookies(response, envConfig);
+        response.sendRedirect(redirectUrl);
     }
 }
