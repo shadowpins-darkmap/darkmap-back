@@ -224,43 +224,7 @@ public class AuthController {
             @Parameter(hidden = true) @AuthenticationPrincipal Long id,
             HttpServletRequest httpRequest,
             HttpServletResponse response) {
-        if (id == null) {
-            return ResponseEntity.status(401).body(Map.of("error", "인증이 필요합니다."));
-        }
-        try {
-            EnvironmentConfig envConfig = environmentResolver.resolve(httpRequest);
-            Member member = memberService.findById(id);
-            if (member == null || member.getIsDeleted()) {
-                return ResponseEntity.status(404).body(Map.of("error", "사용자를 찾을 수 없습니다."));
-            }
-
-            if (member.getType() != AuthType.KAKAO) {
-                return ResponseEntity.status(400).body(Map.of("error", "카카오 사용자가 아닙니다."));
-            }
-
-            // 카카오 연동 해제 (저장된 토큰 자동 사용)
-            authService.disconnectKakao(id);
-
-            // JWT 토큰 블랙리스트 처리
-            String token = getTokenFromRequest(httpRequest);
-            if (token != null) {
-                tokenBlacklistService.blacklistToken(token);
-            }
-
-            // 회원 탈퇴 및 토큰 삭제
-            memberService.withdraw(id);
-            refreshTokenService.deleteByMemberId(id);
-            kakaoTokenService.deleteByMemberId(id);
-
-            clearTokenCookies(response, envConfig);
-
-            log.info("✅ 카카오 탈퇴 완료 - 사용자 ID: {}", id);
-            return ResponseEntity.ok().body(Map.of("message", "카카오 탈퇴가 완료되었습니다."));
-
-        } catch (Exception e) {
-            log.error("❌ 카카오 탈퇴 처리 실패 - 사용자 ID: {}", id, e);
-            return ResponseEntity.status(500).body(Map.of("error", "탈퇴 처리 중 오류가 발생했습니다."));
-        }
+        return processWithdrawal(id, httpRequest, response, AuthType.KAKAO);
     }
 
     /**
@@ -317,42 +281,51 @@ public class AuthController {
             @Parameter(hidden = true) @AuthenticationPrincipal Long id,
             HttpServletRequest httpRequest,
             HttpServletResponse response) {
-        if (id == null) {
-            return ResponseEntity.status(401).body(Map.of("error", "인증이 필요합니다."));
-        }
-        try {
-            EnvironmentConfig envConfig = environmentResolver.resolve(httpRequest);
-            Member member = memberService.findById(id);
-            if (member == null || member.getIsDeleted()) {
-                return ResponseEntity.status(404).body(Map.of("error", "사용자를 찾을 수 없습니다."));
-            }
+        return processWithdrawal(id, httpRequest, response, AuthType.GOOGLE);
+    }
 
-            if (member.getType() != AuthType.GOOGLE) {
-                return ResponseEntity.status(400).body(Map.of("error", "구글 사용자가 아닙니다."));
-            }
-
-            // 구글 연동 해제
-            authService.disconnectGoogle(id);
-
-            // JWT 토큰 블랙리스트 처리
-            String token = getTokenFromRequest(httpRequest);
-            if (token != null) {
-                tokenBlacklistService.blacklistToken(token);
-            }
-
-            // 회원 탈퇴 및 토큰 삭제
-            memberService.withdraw(id);
-            refreshTokenService.deleteByMemberId(id);
-
-            clearTokenCookies(response, envConfig);
-
-            log.info("✅ 구글 탈퇴 완료 - 사용자 ID: {}", id);
-            return ResponseEntity.ok().body(Map.of("message", "구글 탈퇴가 완료되었습니다."));
-
-        } catch (Exception e) {
-            log.error("❌ 구글 탈퇴 처리 실패 - 사용자 ID: {}", id, e);
-            return ResponseEntity.status(500).body(Map.of("error", "탈퇴 처리 중 오류가 발생했습니다."));
-        }
+    /**
+     * 소셜 유형 자동 감지 회원 탈퇴
+     */
+    @Operation(
+            summary = "소셜 회원 탈퇴 (자동 감지)",
+            description = "현재 로그인한 사용자의 소셜 로그인 유형을 자동으로 판별해 해당 제공자 연동을 해제하고 탈퇴를 진행합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "탈퇴 성공",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    value = """
+                                    {
+                                        "message": "카카오 탈퇴가 완료되었습니다.",
+                                        "provider": "KAKAO"
+                                    }
+                                    """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "인증 실패"
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "사용자를 찾을 수 없음"
+            ),
+            @ApiResponse(
+                    responseCode = "500",
+                    description = "서버 오류"
+            )
+    })
+    @DeleteMapping("/withdraw")
+    public ResponseEntity<?> withdrawAuto(
+            @Parameter(hidden = true) @AuthenticationPrincipal Long id,
+            HttpServletRequest httpRequest,
+            HttpServletResponse response) {
+        return processWithdrawal(id, httpRequest, response, null);
     }
 
     private String getTokenFromRequest(HttpServletRequest request) {
@@ -371,6 +344,75 @@ public class AuthController {
         }
 
         return null;
+    }
+
+    private ResponseEntity<?> processWithdrawal(
+            Long memberId,
+            HttpServletRequest request,
+            HttpServletResponse response,
+            AuthType requiredType) {
+
+        if (memberId == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "인증이 필요합니다."));
+        }
+
+        try {
+            EnvironmentConfig envConfig = environmentResolver.resolve(request);
+            Member member = memberService.findById(memberId);
+
+            if (member == null || member.getIsDeleted()) {
+                return ResponseEntity.status(404).body(Map.of("error", "사용자를 찾을 수 없습니다."));
+            }
+
+            AuthType memberType = member.getType();
+
+            if (memberType == null) {
+                return ResponseEntity.status(400).body(Map.of("error", "회원 유형이 설정되어 있지 않습니다."));
+            }
+
+            if (requiredType != null && memberType != requiredType) {
+                String typeError = requiredType == AuthType.KAKAO
+                        ? "카카오 사용자가 아닙니다."
+                        : "구글 사용자가 아닙니다.";
+                return ResponseEntity.status(400).body(Map.of("error", typeError));
+            }
+
+            switch (memberType) {
+                case KAKAO -> {
+                    authService.disconnectKakao(memberId);
+                    // 카카오 토큰 수동 삭제 (연동 해제 실패 대비)
+                    kakaoTokenService.deleteByMemberId(memberId);
+                }
+                case GOOGLE -> authService.disconnectGoogle(memberId);
+                default -> {
+                    return ResponseEntity.status(400).body(Map.of("error", "지원하지 않는 회원 유형입니다."));
+                }
+            }
+
+            String token = getTokenFromRequest(request);
+            if (token != null) {
+                tokenBlacklistService.blacklistToken(token);
+            }
+
+            memberService.withdraw(memberId);
+            refreshTokenService.deleteByMemberId(memberId);
+
+            clearTokenCookies(response, envConfig);
+
+            String successMessage = memberType == AuthType.KAKAO
+                    ? "카카오 탈퇴가 완료되었습니다."
+                    : "구글 탈퇴가 완료되었습니다.";
+
+            log.info("✅ {} 탈퇴 완료 - 사용자 ID: {}", memberType, memberId);
+            return ResponseEntity.ok().body(Map.of(
+                    "message", successMessage,
+                    "provider", memberType.name()
+            ));
+
+        } catch (Exception e) {
+            log.error("❌ 회원 탈퇴 처리 실패 - 사용자 ID: {}", memberId, e);
+            return ResponseEntity.status(500).body(Map.of("error", "탈퇴 처리 중 오류가 발생했습니다."));
+        }
     }
 
     /**
