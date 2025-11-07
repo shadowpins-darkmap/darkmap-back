@@ -224,6 +224,9 @@ public class AuthController {
             @Parameter(hidden = true) @AuthenticationPrincipal Long id,
             HttpServletRequest httpRequest,
             HttpServletResponse response) {
+        if (id == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "인증이 필요합니다."));
+        }
         try {
             EnvironmentConfig envConfig = environmentResolver.resolve(httpRequest);
             Member member = memberService.findById(id);
@@ -314,6 +317,9 @@ public class AuthController {
             @Parameter(hidden = true) @AuthenticationPrincipal Long id,
             HttpServletRequest httpRequest,
             HttpServletResponse response) {
+        if (id == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "인증이 필요합니다."));
+        }
         try {
             EnvironmentConfig envConfig = environmentResolver.resolve(httpRequest);
             Member member = memberService.findById(id);
@@ -413,6 +419,9 @@ public class AuthController {
             @Parameter(hidden = true) @AuthenticationPrincipal Long id,
             HttpServletRequest request,
             HttpServletResponse response) {
+        if (id == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "인증이 필요합니다."));
+        }
         try {
             EnvironmentConfig envConfig = environmentResolver.resolve(request);
             // JWT 토큰 블랙리스트 처리
