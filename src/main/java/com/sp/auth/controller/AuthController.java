@@ -45,19 +45,32 @@ import java.util.UUID;
         description = """
         ## 인증 관리 API
      
+        ### 인증 방식
+        - **Access Token**: 쿠키로 자동 관리 (30분 유효)
+        - **Refresh Token**: 쿠키로 자동 관리 (7일 유효)
+        - 프론트엔드에서 토큰을 직접 다룰 필요 없음
+        
         ### 지원 기능
         - 카카오/구글 소셜 로그인
-        - JWT 기반 인증 (Access Token 30분)
-        - 자동 토큰 갱신 (Refresh Token 7일)
+        - 자동 토큰 갱신
         - 로그아웃
         - 회원 탈퇴
         
-        ### Swagger UI 사용 방법
+        ## 🔍 Swagger UI 테스트 방법
+        
+        Swagger UI에서는 쿠키를 직접 테스트할 수 없습니다.
+       
+        ### 방법 1: 브라우저에서 로그인 후 테스트
         1. 브라우저 새 탭에서 `/api/v1/auth/login/kakao` 접근
-        2. 로그인 완료 후 리다이렉트 URL에서 token 파라미터 복사
-        3. 우측 상단 "Authorize 🔓" 버튼 클릭
+        2. 로그인 완료 (쿠키 자동 설정됨)
+        3. Swagger UI로 돌아와서 API 테스트
+        4. 쿠키가 자동으로 전송되어 인증됨
+       
+        ### 방법 2: Bearer Token 직접 입력
+        1. 개발자 도구 → Application → Cookies
+        2. `access_token` 값 복사
+        3. Swagger "Authorize 🔓" 버튼 클릭
         4. 복사한 토큰 입력 (Bearer 접두사 제외)
-        5. 🔒 표시된 모든 API 테스트 가능
         """
 )
 @Slf4j

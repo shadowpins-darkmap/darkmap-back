@@ -22,41 +22,34 @@ public class SwaggerConfig {
                 .info(new Info()
                         .title("Shadow Pins API")
                         .description("""
-                            ## Shadow Pins 커뮤니티 API 문서
+                            ## Shadow Pins API
+                            ---
                             
-                            ### ⚠️ 회원 전용 커뮤니티
+                            ## 🔑 인증 방식
                             
-                            본 서비스는 **회원 전용 커뮤니티**입니다.
-                            - 게시글 조회를 포함한 모든 기능은 로그인이 필요합니다.
-                            - 비회원은 접근할 수 없습니다.
+                            ### 쿠키 자동 관리
+                            - `access_token`: API 인증용 (30분 유효, HttpOnly)
+                            - `refresh_token`: 토큰 갱신용 (7일 유효, HttpOnly)
+                            - 모든 요청에 `withCredentials: true` 설정
                             
-                            ### 인증 방식
+                            ---
                             
-                            #### 1. 소셜 로그인 (카카오/구글)
-                            - 브라우저에서 로그인 URL로 직접 접근
-                            - 성공 시 프론트엔드로 리다이렉트 (Access Token 포함)
-                            - Refresh Token은 HttpOnly Cookie로 자동 설정
+                            ## 🔍 Swagger UI 테스트 방법
                             
-                            #### 2. API 인증
-                            - **모든 API 호출에 Access Token 필수**
-                            - 형식: `Bearer {access_token}`
-                            - 유효기간: 30분
+                            Swagger UI는 HttpOnly 쿠키를 직접 다룰 수 없습니다.
                             
-                            #### 3. 토큰 갱신
-                            - Access Token 만료 시 `/api/v1/auth/refresh` 호출
-                            - Refresh Token은 Cookie로 자동 전송 (유효기간: 7일)
+                            ### 방법 1: 브라우저 로그인 후 테스트
+                            1. 브라우저 새 탭: `/api/v1/auth/login/kakao` 접근
+                            2. 로그인 완료 (쿠키 자동 설정됨)
+                            3. Swagger UI로 돌아와서 API 테스트
+                            4. 쿠키가 자동 전송되어 인증됨
                             
-                            ### Swagger UI 사용 방법
+                            ### 방법 2: Bearer Token 직접 입력
+                            1. 브라우저 개발자 도구 → Application → Cookies
+                            2. `access_token` 값 복사
+                            3. Swagger "Authorize 🔓" 버튼 클릭
+                            4. 복사한 토큰 입력 (Bearer 접두사 제외)
                             
-                            1. **로그인**: 브라우저 새 탭에서 `/api/v1/auth/login/kakao` 접근
-                            2. **토큰 복사**: 리다이렉트 URL에서 token 파라미터 복사
-                            3. **인증 설정**: 우측 상단 "Authorize 🔓" 버튼 클릭 후 토큰 입력
-                            4. **API 테스트**: 모든 게시판 API 테스트 가능
-                            
-                            ### 인증 필요 여부
-                            
-                            - 🔓 **인증 불필요**: 로그인, 토큰 갱신
-                            - 🔒 **인증 필수**: 게시판 전체, 회원 정보, 로그아웃 등
                             """)
                         .version("1.0.0")
                         .license(new License()
@@ -76,7 +69,22 @@ public class SwaggerConfig {
                                         .type(SecurityScheme.Type.HTTP)
                                         .scheme("bearer")
                                         .bearerFormat("JWT")
-                                        .description("JWT Access Token을 입력하세요. 'Bearer ' 접두사는 자동으로 추가됩니다.")))
+                                        .description("""
+                                            ## 쿠키 우선 인증
+                                            
+                                            이 API는 쿠키를 우선적으로 사용합니다:
+                                            1. `access_token` 쿠키 확인
+                                            2. 없으면 Authorization 헤더 확인
+                                            
+                                            ### 테스트 방법
+                                            - 브라우저에서 `/api/v1/auth/login/kakao` 로그인
+                                            - 쿠키가 자동 설정되어 인증됨
+                                            
+                                            ### 대안: Bearer Token 직접 입력
+                                            개발/테스트 목적으로만 사용:
+                                            1. 개발자 도구에서 `access_token` 쿠키 값 복사
+                                            2. 여기에 붙여넣기 (Bearer 접두사 제외)
+                                            """)))
                 .addSecurityItem(new SecurityRequirement().addList("bearerAuth"));
     }
 }
