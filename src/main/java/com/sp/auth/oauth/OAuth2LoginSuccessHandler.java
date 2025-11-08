@@ -2,6 +2,7 @@ package com.sp.auth.oauth;
 
 import com.sp.auth.jwt.JwtTokenProvider;
 import com.sp.config.EnvironmentConfig;
+import com.sp.config.EnvironmentResolver;
 import com.sp.exception.WithdrawnMemberException;
 import com.sp.member.persistent.entity.Member;
 import com.sp.member.model.type.AuthType;
@@ -9,11 +10,11 @@ import com.sp.member.service.MemberService;
 import com.sp.token.service.RefreshTokenService;
 import com.sp.token.service.GoogleTokenService;
 import com.sp.util.AsyncRetryUtil;
-import com.sp.util.EnvironmentUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClient;
@@ -23,7 +24,6 @@ import org.springframework.security.web.authentication.AuthenticationSuccessHand
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
-import java.net.URLEncoder;
 import java.time.Duration;
 import java.time.LocalDateTime;
 
@@ -37,6 +37,10 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
     private final RefreshTokenService refreshTokenService;
     private final OAuth2AuthorizedClientService authorizedClientService;
     private final GoogleTokenService googleTokenService;
+    private final EnvironmentResolver environmentResolver;
+
+    private static final String REFRESH_COOKIE = "refresh_token";
+    private static final String ACCESS_COOKIE = "access_token";
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request,
@@ -50,6 +54,8 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
         String email = oAuth2User.getAttribute("email");
         String providerId = oAuth2User.getAttribute("sub");
 
+        EnvironmentConfig envConfig = environmentResolver.resolve(request);
+
         try {
             // 1. Member 저장/조회 (동기 - 필수)
             Member member = memberService.saveIfNotExists(email, providerId, AuthType.GOOGLE);
@@ -59,12 +65,7 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
                 log.warn("🚫 탈퇴한 회원의 구글 로그인 시도 차단 - ID: {}, Email: {}",
                         member.getId(), member.getEmail());
 
-                // 탈퇴 회원은 에러 페이지로 리다이렉트
-                EnvironmentConfig envConfig = EnvironmentUtil.determineEnvironment(request);
-                String redirectUrl = envConfig.getFrontendUrl() +
-                        "/social-redirect-google?success=false&error=WITHDRAWN_MEMBER";
-                log.warn("🚫 탈퇴 회원 로그인 차단 - 리다이렉트: {}", redirectUrl);
-                response.sendRedirect(redirectUrl);
+                redirectWithError(response, envConfig, "WITHDRAWN_MEMBER");
                 return;
             }
 
@@ -109,26 +110,12 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
             );
 
             // 6. 환경 설정 및 쿠키 설정
-            EnvironmentConfig envConfig = EnvironmentUtil.determineEnvironment(request);
-
-            ResponseCookie.ResponseCookieBuilder cookieBuilder = ResponseCookie.from("refresh_token", refreshToken)
-                    .httpOnly(true)
-                    .secure(!envConfig.isLocal())
-                    .path("/")
-                    .maxAge(Duration.ofDays(7));
-
-            if (!envConfig.isLocal()) {
-                cookieBuilder.domain(envConfig.getCookieDomain());
-                cookieBuilder.sameSite("None");
-            } else {
-                cookieBuilder.sameSite("Lax");
-            }
-
-            ResponseCookie refreshCookie = cookieBuilder.build();
-            response.addHeader("Set-Cookie", refreshCookie.toString());
+            addCookie(response, envConfig, REFRESH_COOKIE, refreshToken, Duration.ofDays(7));
+            addCookie(response, envConfig, ACCESS_COOKIE, accessToken,
+                    Duration.ofMillis(jwtTokenProvider.getExpirationTime()));
 
             // 7. 즉시 리다이렉트 (DB 저장 완료 대기 안 함)
-            String redirectUrl = envConfig.getFrontendUrl() + "/social-redirect-google?success=true&token=" + accessToken;
+            String redirectUrl = envConfig.getFrontendUrl() + "/social-redirect-google?success=true";
 
             log.info("✅ Google OAuth2 로그인 완료 - ID: {}, 소요시간: {}ms (비동기 작업 제외)",
                     member.getId(), System.currentTimeMillis() - startTime);
@@ -138,17 +125,40 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
 
         } catch (WithdrawnMemberException e) {
             // WithdrawnMemberException이 발생한 경우 (만약 saveIfNotExists에서 던진다면)
-            EnvironmentConfig envConfig = EnvironmentUtil.determineEnvironment(request);
-            String redirectUrl = envConfig.getFrontendUrl() +
-                    "/social-redirect-google?success=false&error=WITHDRAWN_MEMBER";
-            log.warn("🚫 탈퇴 회원 로그인 차단 - 리다이렉트: {}", redirectUrl);
-            response.sendRedirect(redirectUrl);
+            redirectWithError(response, envConfig, "WITHDRAWN_MEMBER");
         } catch (Exception e) {
             log.error("❌ Google OAuth2 로그인 실패", e);
-            EnvironmentConfig envConfig = EnvironmentUtil.determineEnvironment(request);
-            String redirectUrl = envConfig.getFrontendUrl() +
-                    "/social-redirect-google?success=false&error=SERVER_ERROR";
-            response.sendRedirect(redirectUrl);
+            redirectWithError(response, envConfig, "SERVER_ERROR");
         }
+    }
+
+    private void addCookie(HttpServletResponse response,
+                           EnvironmentConfig envConfig,
+                           String name,
+                           String value,
+                           Duration maxAge) {
+        ResponseCookie.ResponseCookieBuilder builder = ResponseCookie.from(name, value)
+                .httpOnly(true)
+                .secure(!envConfig.isLocal())
+                .path("/")
+                .maxAge(maxAge);
+
+        if (!envConfig.isLocal() && envConfig.getCookieDomain() != null) {
+            builder.domain(envConfig.getCookieDomain());
+            builder.sameSite("None");
+        } else {
+            builder.sameSite("Lax");
+        }
+
+        response.addHeader(HttpHeaders.SET_COOKIE, builder.build().toString());
+    }
+
+    private void redirectWithError(HttpServletResponse response,
+                                   EnvironmentConfig envConfig,
+                                   String errorCode) throws IOException {
+        String redirectUrl = envConfig.getFrontendUrl() +
+                "/social-redirect-google?success=false&error=" + errorCode;
+        log.warn("Google OAuth redirect with error {} -> {}", errorCode, redirectUrl);
+        response.sendRedirect(redirectUrl);
     }
 }

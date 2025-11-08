@@ -47,11 +47,12 @@ public class AuthService {
     /**
      * 카카오 로그인 URL redirect
      */
-    public String getKakaoAuthorizeUrl() {
+    public String getKakaoAuthorizeUrl(String state) {
         return "https://kauth.kakao.com/oauth/authorize"
                 + "?client_id=" + clientId
                 + "&redirect_uri=" + redirectUri
-                + "&response_type=code";
+                + "&response_type=code"
+                + (state != null ? "&state=" + state : "");
     }
 
     public AuthResponse loginWithKakao(String code) {

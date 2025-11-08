@@ -1,10 +1,11 @@
 package com.sp.auth.oauth;
 
 import com.sp.config.EnvironmentConfig;
-import com.sp.util.EnvironmentUtil;
+import com.sp.config.EnvironmentResolver;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.authentication.AuthenticationFailureHandler;
@@ -14,7 +15,10 @@ import java.io.IOException;
 
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class OAuth2LoginFailureHandler implements AuthenticationFailureHandler {
+
+    private final EnvironmentResolver environmentResolver;
 
     @Override
     public void onAuthenticationFailure(HttpServletRequest request,
@@ -23,7 +27,7 @@ public class OAuth2LoginFailureHandler implements AuthenticationFailureHandler {
 
         log.error("❌ Google OAuth2 로그인 실패: {}", exception.getMessage());
 
-        EnvironmentConfig envConfig = EnvironmentUtil.determineEnvironment(request);
+        EnvironmentConfig envConfig = environmentResolver.resolve(request);
         String redirectUrl = envConfig.getFrontendUrl() +
                 "/social-redirect-google?success=false&error=AUTH_FAILED";
 

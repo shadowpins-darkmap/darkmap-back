@@ -51,6 +51,9 @@ jobs:
 
             export JWT_SECRET=${{ secrets.JWT_SECRET }}
             export FRONTEND_REDIRECT_URL=${{ secrets.FRONTEND_REDIRECT_URL }}
+            export FRONTEND_ALLOWED_ORIGINS=${{ secrets.FRONTEND_ALLOWED_ORIGINS }}
+            export FRONTEND_COOKIE_DOMAIN=${{ secrets.FRONTEND_COOKIE_DOMAIN }}
+            export FRONTEND_DEFAULT_URL=${{ secrets.FRONTEND_DEFAULT_URL }}
 
             export KAKAO_CLIENT_ID=${{ secrets.KAKAO_CLIENT_ID }}
             export KAKAO_TOKEN_URI=${{ secrets.KAKAO_TOKEN_URI }}
