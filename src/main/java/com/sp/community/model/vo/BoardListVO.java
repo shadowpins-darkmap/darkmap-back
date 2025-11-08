@@ -1,6 +1,8 @@
 package com.sp.community.model.vo;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -52,6 +54,12 @@ public class BoardListVO {
      * 카테고리별 게시글 수
      */
     private Map<String, Long> categoryStats;
+
+    @Schema(description = "전체 요소 수", example = "150")
+    @JsonProperty("totalElements")
+    public Long getTotalElementsAlias() {
+        return (pageInfo != null) ? pageInfo.getTotalElements() : null;
+    }
 
     /**
      * 페이징 정보 VO
