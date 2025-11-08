@@ -18,7 +18,6 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -41,8 +40,7 @@ public class MemberController {
 
     @Operation(
             summary = "내 프로필 조회",
-            description = "현재 로그인한 사용자의 프로필 정보를 조회합니다.",
-            security = @SecurityRequirement(name = "Bearer Authentication")
+            description = "현재 로그인한 사용자의 프로필 정보를 조회합니다."
     )
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "프로필 조회 성공"),
@@ -80,8 +78,7 @@ public class MemberController {
 
     @Operation(
             summary = "내 정보 요약",
-            description = "현재 로그인한 사용자의 기본 정보와 활동 통계를 조회합니다.",
-            security = @SecurityRequirement(name = "Bearer Authentication")
+            description = "현재 로그인한 사용자의 기본 정보와 활동 통계를 조회합니다."
     )
     @ApiResponses(value = {
             @ApiResponse(
@@ -170,8 +167,7 @@ public class MemberController {
 
     @Operation(
             summary = "로그인 상태 확인",
-            description = "현재 토큰의 유효성을 확인합니다.",
-            security = @SecurityRequirement(name = "Bearer Authentication")
+            description = "현재 토큰의 유효성을 확인합니다."
     )
     @GetMapping("/status")
     public ResponseEntity<?> checkStatus(@Parameter(hidden = true) @AuthenticationPrincipal Long memberId) {
@@ -187,8 +183,7 @@ public class MemberController {
 
     @Operation(
             summary = "닉네임 수정 ",
-            description = "현재 로그인한 사용자의 닉네임을 수정합니다. 30일마다 1회, 총 3회까지 변경 가능합니다.",
-            security = @SecurityRequirement(name = "Bearer Authentication")
+            description = "현재 로그인한 사용자의 닉네임을 수정합니다. 30일마다 1회, 총 3회까지 변경 가능합니다."
     )
     @ApiResponses(value = {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
@@ -363,8 +358,7 @@ public class MemberController {
 
     @Operation(
             summary = "마케팅 광고 수신 동의 토글",
-            description = "현재 로그인한 사용자의 마케팅 광고 수신 동의 상태를 토글합니다. 동의 상태가 true면 false로, false면 true로 변경됩니다.",
-            security = @SecurityRequirement(name = "Bearer Authentication")
+            description = "현재 로그인한 사용자의 마케팅 광고 수신 동의 상태를 토글합니다. 동의 상태가 true면 false로, false면 true로 변경됩니다."
     )
     @ApiResponses(value = {
             @ApiResponse(

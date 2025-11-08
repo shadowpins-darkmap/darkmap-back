@@ -2,7 +2,6 @@ package com.sp.auth.controller;
 
 import com.sp.auth.jwt.JwtTokenProvider;
 import com.sp.auth.model.vo.AuthResponse;
-import com.sp.auth.model.vo.WithdrawRequest;
 import com.sp.auth.service.AuthService;
 import com.sp.config.EnvironmentConfig;
 import com.sp.exception.WithdrawnMemberException;
@@ -20,6 +19,7 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
@@ -37,7 +37,26 @@ import java.time.Duration;
 import java.util.Arrays;
 import java.util.Map;
 
-@Tag(name = "Authentication", description = "인증 관리 API - 카카오/구글 소셜 로그인, 로그아웃, 토큰 갱신, 회원 탈퇴 기능을 제공합니다.")
+@Tag(
+        name = "Authentication",
+        description = """
+        ## 인증 관리 API
+     
+        ### 지원 기능
+        - 카카오/구글 소셜 로그인
+        - JWT 기반 인증 (Access Token 30분)
+        - 자동 토큰 갱신 (Refresh Token 7일)
+        - 로그아웃
+        - 회원 탈퇴
+        
+        ### Swagger UI 사용 방법
+        1. 브라우저 새 탭에서 `/api/v1/auth/login/kakao` 접근
+        2. 로그인 완료 후 리다이렉트 URL에서 token 파라미터 복사
+        3. 우측 상단 "Authorize 🔓" 버튼 클릭
+        4. 복사한 토큰 입력 (Bearer 접두사 제외)
+        5. 🔒 표시된 모든 API 테스트 가능
+        """
+)
 @Slf4j
 @RequiredArgsConstructor
 @RestController
@@ -56,14 +75,22 @@ public class AuthController {
      */
     @Operation(
             summary = "카카오 로그인 시작",
-            description = "카카오 OAuth 인증 페이지로 리다이렉트합니다. 브라우저에서 직접 접근해야 합니다."
+            description = """
+            ## 브라우저에서 직접 접근하세요
+```
+            https://api.kdark.weareshadowpins.com/api/v1/auth/login/kakao
+```
+            ### 로그인 플로우
+            1. 이 URL로 리다이렉트
+            2. 카카오 로그인 페이지 표시
+            3. 사용자 인증 완료
+            4. 콜백으로 자동 리다이렉트
+            5. 최종적으로 프론트엔드로 리다이렉트 (토큰 포함)
+```
+            https://yourfrontend.com/social-redirect-kakao?success=true&token={ACCESS_TOKEN}
+```
+            """
     )
-    @ApiResponses({
-            @ApiResponse(
-                    responseCode = "302",
-                    description = "카카오 인증 페이지로 리다이렉트"
-            )
-    })
     @GetMapping("/login/kakao")
     public void redirectToKakao(HttpServletResponse response) throws IOException {
         String redirectUrl = authService.getKakaoAuthorizeUrl();
@@ -194,6 +221,7 @@ public class AuthController {
                     )
             )
     })
+    @SecurityRequirement(name = "bearerAuth")
     @DeleteMapping("/withdraw/kakao")
     public ResponseEntity<?> withdrawKakao(
             @Parameter(hidden = true) @AuthenticationPrincipal Long id,
@@ -283,6 +311,7 @@ public class AuthController {
                     description = "서버 오류"
             )
     })
+    @SecurityRequirement(name = "bearerAuth")
     @DeleteMapping("/withdraw/google")
     public ResponseEntity<?> withdrawGoogle(
             @Parameter(hidden = true) @AuthenticationPrincipal Long id,
@@ -381,6 +410,7 @@ public class AuthController {
                     )
             )
     })
+    @SecurityRequirement(name = "bearerAuth")
     @PostMapping("/logout")
     public ResponseEntity<?> logout(
             @Parameter(hidden = true) @AuthenticationPrincipal Long id,
