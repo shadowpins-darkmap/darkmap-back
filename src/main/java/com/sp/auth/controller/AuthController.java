@@ -327,11 +327,11 @@ public class AuthController {
     }
 
     /**
-     * 소셜 유형 자동 감지 회원 탈퇴
+     * 소셜 유형 없이 회원 탈퇴
      */
     @Operation(
-            summary = "소셜 회원 탈퇴 (자동 감지)",
-            description = "현재 로그인한 사용자의 소셜 로그인 유형을 자동으로 판별해 해당 제공자 연동을 해제하고 탈퇴를 진행합니다."
+            summary = "회원 탈퇴",
+            description = "현재 로그인한 사용자의 연동을 해제하고 탈퇴"
     )
     @ApiResponses({
             @ApiResponse(

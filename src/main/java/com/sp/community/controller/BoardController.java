@@ -236,14 +236,8 @@ public class BoardController {
     })
     @GetMapping
     public ResponseEntity<CommonApiResponse<BoardListVO>> getBoardList(
-            @Parameter(
-                    description = "검색 조건",
-                    example = "keyword=검색어&searchType=TITLE&category=FREE"
-            ) @ModelAttribute BoardSearchDTO searchDTO,
-            @Parameter(
-                    description = "페이징 정보",
-                    example = "page=0&size=10&sort=createdAt,desc"
-            ) @ModelAttribute PageRequestDTO pageRequestDTO) {
+            @ModelAttribute BoardSearchDTO searchDTO,
+            @ModelAttribute PageRequestDTO pageRequestDTO) {
 
         log.info("게시글 목록 조회 요청: search={}, page={}", searchDTO, pageRequestDTO);
 
@@ -434,7 +428,7 @@ public class BoardController {
     })
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<CommonApiResponse<BoardVO>> createBoard(
-            @Parameter(description = "게시글 생성 정보", required = true) @Valid @ModelAttribute BoardCreateDTO createDTO,
+            @Valid @ModelAttribute BoardCreateDTO createDTO,
             @Parameter(hidden = true) @AuthenticationPrincipal Long memberId) {
 
         log.info("게시글 생성 요청: title={}, authorId={}", createDTO.getTitle(), createDTO.getAuthorId());
@@ -548,9 +542,10 @@ public class BoardController {
     })
     @PutMapping(value = "/{boardId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<CommonApiResponse<BoardVO>> updateBoard(
-            @Parameter(description = "게시글 ID", required = true, example = "1") @PathVariable Long boardId,
-            @Parameter(description = "게시글 수정 정보", required = true) @Valid @ModelAttribute BoardUpdateDTO updateDTO,
-            @Parameter(hidden = true) @AuthenticationPrincipal Long memberId) {
+            @Parameter(description = "게시글 ID", required = true, example = "1")
+            @PathVariable Long boardId,
+            @Valid @ModelAttribute BoardUpdateDTO updateDTO,
+            @Parameter(hidden = true) @AuthenticationPrincipal Long memberId)  {
 
         log.info("게시글 수정 요청: boardId={}", boardId);
 

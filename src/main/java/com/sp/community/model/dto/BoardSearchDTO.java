@@ -1,5 +1,6 @@
 package com.sp.community.model.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
@@ -29,6 +30,7 @@ public class BoardSearchDTO {
     /**
      * 검색 키워드
      */
+    @Schema(description = "검색 키워드")
     @Size(max = 100, message = "검색 키워드는 100자 이하로 입력해주세요.")
     private String keyword;
 
@@ -41,6 +43,7 @@ public class BoardSearchDTO {
     /**
      * 카테고리
      */
+    @Schema(description = "카테고리")
     @Size(max = 50, message = "카테고리는 50자 이하로 입력해주세요.")
     private String category;
 
