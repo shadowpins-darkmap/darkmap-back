@@ -9,7 +9,6 @@ import com.sp.member.model.type.AuthType;
 import com.sp.member.service.MemberService;
 import com.sp.token.service.RefreshTokenService;
 import com.sp.token.service.GoogleTokenService;
-import com.sp.util.AsyncRetryUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -86,28 +85,28 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
                 }
 
                 final String finalGoogleRefreshToken = googleRefreshToken;
-                AsyncRetryUtil.executeWithRetry(
-                        "Google Token 저장",
-                        () -> googleTokenService.saveTokens(
-                                member.getId(),
-                                googleAccessToken,
-                                finalGoogleRefreshToken,
-                                authorizedClient.getAccessToken().getExpiresAt()
-                        ),
-                        3 // 최대 3회 재시도
-                );
+                try {
+                    googleTokenService.saveTokens(
+                            member.getId(),
+                            googleAccessToken,
+                            finalGoogleRefreshToken,
+                            authorizedClient.getAccessToken().getExpiresAt()
+                    );
+                } catch (Exception e) {
+                    log.error("❌ Google Token 저장 실패 - 사용자 ID: {}", member.getId(), e);
+                }
             }
 
-            // 5. RefreshToken 저장 (비동기 + 재시도)
-            AsyncRetryUtil.executeWithRetry(
-                    "RefreshToken 저장",
-                    () -> refreshTokenService.save(
-                            member.getId(),
-                            refreshToken,
-                            LocalDateTime.now().plusDays(7)
-                    ),
-                    3
-            );
+            // 5. RefreshToken 저장 (동기)
+            try {
+                refreshTokenService.save(
+                        member.getId(),
+                        refreshToken,
+                        LocalDateTime.now().plusDays(7)
+                );
+            } catch (Exception e) {
+                log.error("❌ RefreshToken 저장 실패 - 사용자 ID: {}", member.getId(), e);
+            }
 
             // 6. 환경 설정 및 쿠키 설정
             addCookie(response, envConfig, REFRESH_COOKIE, refreshToken, Duration.ofDays(7));

@@ -13,7 +13,6 @@ import com.sp.member.service.MemberService;
 import com.sp.token.service.GoogleTokenService;
 import com.sp.token.service.KakaoTokenService;
 import com.sp.token.service.RefreshTokenService;
-import com.sp.util.AsyncRetryUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -81,29 +80,29 @@ public class AuthService {
         String jwt = jwtTokenProvider.createAccessToken(member.getId(), member.getLevel());
         String refreshToken = jwtTokenProvider.createRefreshToken(member.getId());
 
-        // 5. 카카오 토큰 저장 (비동기 + 재시도)
+        // 5. 카카오 토큰 저장 (동기 처리로 커넥션 잠식 방지)
         Instant expiresAt = Instant.now().plusSeconds(tokenResponse.getExpiresIn());
-        AsyncRetryUtil.executeWithRetry(
-                "카카오 토큰 저장",
-                () -> kakaoTokenService.saveTokens(
-                        member.getId(),
-                        tokenResponse.getAccessToken(),
-                        tokenResponse.getRefreshToken(),
-                        expiresAt
-                ),
-                3 // 최대 3회 재시도
-        );
+        try {
+            kakaoTokenService.saveTokens(
+                    member.getId(),
+                    tokenResponse.getAccessToken(),
+                    tokenResponse.getRefreshToken(),
+                    expiresAt
+            );
+        } catch (Exception e) {
+            log.error("❌ 카카오 토큰 저장 실패 - 사용자 ID: {}", member.getId(), e);
+        }
 
-        // 6. Refresh Token 저장 (비동기 + 재시도)
-        AsyncRetryUtil.executeWithRetry(
-                "RefreshToken 저장",
-                () -> refreshTokenService.save(
-                        member.getId(),
-                        refreshToken,
-                        LocalDateTime.now().plusDays(7)
-                ),
-                3
-        );
+        // 6. Refresh Token 저장 (동기)
+        try {
+            refreshTokenService.save(
+                    member.getId(),
+                    refreshToken,
+                    LocalDateTime.now().plusDays(7)
+            );
+        } catch (Exception e) {
+            log.error("❌ RefreshToken 저장 실패 - 사용자 ID: {}", member.getId(), e);
+        }
 
         log.info("✅ 카카오 로그인 완료 - ID: {}, 소요시간: {}ms (비동기 작업 제외)",
                 member.getId(), System.currentTimeMillis() - startTime);

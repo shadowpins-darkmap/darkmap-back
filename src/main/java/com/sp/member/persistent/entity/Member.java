@@ -13,20 +13,27 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Builder
 @Entity
+@Table(name = "member", indexes = {
+        @Index(name = "idx_member_email", columnList = "email"),
+        @Index(name = "idx_member_member_id", columnList = "member_id"),
+        @Index(name = "idx_member_user_number", columnList = "user_number")
+})
 public class Member {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "member_id", nullable = false, unique = true)
     private String memberId;
 
-    @Column(name = "user_number", nullable = true) //인덱스용
+    @Column(name = "user_number", nullable = true, unique = true) //인덱스용
     private Integer userNumber;
 
     @Enumerated(EnumType.STRING)
     private AuthType type;
 
+    @Column(nullable = false, unique = true)
     private String email;
 
     private String nickname;
