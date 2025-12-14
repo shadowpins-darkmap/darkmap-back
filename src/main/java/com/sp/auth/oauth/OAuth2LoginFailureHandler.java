@@ -29,7 +29,7 @@ public class OAuth2LoginFailureHandler implements AuthenticationFailureHandler {
 
         EnvironmentConfig envConfig = environmentResolver.resolve(request);
         String redirectUrl = envConfig.getFrontendUrl() +
-                "/social-redirect-google?success=false&error=AUTH_FAILED";
+                "/login?success=false&error=AUTH_FAILED";
 
         response.sendRedirect(redirectUrl);
     }
