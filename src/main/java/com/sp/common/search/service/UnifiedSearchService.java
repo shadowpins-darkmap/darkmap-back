@@ -1,13 +1,12 @@
 package com.sp.common.search.service;
 
+import com.sp.common.search.model.dto.UnifiedSearchResponseDTO;
 import com.sp.common.search.model.dto.UnifiedSearchResultDTO;
 import com.sp.community.persistent.entity.BoardEntity;
 import com.sp.community.persistent.repository.BoardRepository;
 import com.sp.darkmap.persistent.entity.Article;
 import com.sp.darkmap.persistent.repository.ArticleRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,17 +26,19 @@ public class UnifiedSearchService {
     private final ArticleRepository articleRepository;
     private final BoardRepository boardRepository;
 
-    public Page<UnifiedSearchResultDTO> unifiedSearch(String keyword, Pageable pageable) {
+    public UnifiedSearchResponseDTO unifiedSearch(String keyword, Pageable pageable) {
         List<UnifiedSearchResultDTO> results = new ArrayList<>();
 
         // Article 검색
         List<Article> articles = articleRepository.searchByKeyword(keyword);
+        long newsTotalElements = articles.size();
         results.addAll(articles.stream()
                 .map(this::convertArticleToDTO)
                 .collect(Collectors.toList()));
 
         // Board 검색
         List<BoardEntity> boards = boardRepository.searchByKeyword(keyword);
+        long communityTotalElements = boards.size();
         results.addAll(boards.stream()
                 .map(this::convertBoardToDTO)
                 .collect(Collectors.toList()));
@@ -49,9 +50,24 @@ public class UnifiedSearchService {
         int start = (int) pageable.getOffset();
         int end = Math.min((start + pageable.getPageSize()), results.size());
 
-        List<UnifiedSearchResultDTO> pagedResults = results.subList(start, end);
+        List<UnifiedSearchResultDTO> pagedResults = start >= results.size()
+                ? List.of()
+                : results.subList(start, end);
 
-        return new PageImpl<>(pagedResults, pageable, results.size());
+        long totalElements = results.size();
+        int totalPages = pageable.getPageSize() > 0
+                ? (int) Math.ceil((double) totalElements / pageable.getPageSize())
+                : 0;
+
+        return UnifiedSearchResponseDTO.builder()
+                .results(pagedResults)
+                .totalElements(totalElements)
+                .newsTotalElements(newsTotalElements)
+                .communityTotalElements(communityTotalElements)
+                .totalPages(totalPages)
+                .page(pageable.getPageNumber() + 1)
+                .size(pageable.getPageSize())
+                .build();
     }
 
     // 정렬을 위한 날짜 추출 메서드

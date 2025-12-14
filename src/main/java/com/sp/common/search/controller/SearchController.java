@@ -1,6 +1,6 @@
 package com.sp.common.search.controller;
 
-import com.sp.common.search.model.dto.UnifiedSearchResultDTO;
+import com.sp.common.search.model.dto.UnifiedSearchResponseDTO;
 import com.sp.common.search.service.UnifiedSearchService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -10,11 +10,9 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 
 @RestController
 @RequestMapping("/api/v1/search")
@@ -30,7 +28,7 @@ public class SearchController {
             @ApiResponse(
                     responseCode = "200",
                     description = "검색 성공",
-                    content = @Content(schema = @Schema(implementation = Page.class))
+                    content = @Content(schema = @Schema(implementation = UnifiedSearchResponseDTO.class))
             ),
             @ApiResponse(
                     responseCode = "400",
@@ -39,7 +37,7 @@ public class SearchController {
             )
     })
     @GetMapping("/all")
-    public ResponseEntity<Page<UnifiedSearchResultDTO>> search(
+    public ResponseEntity<UnifiedSearchResponseDTO> search(
             @Parameter(
                     description = "검색 키워드 (Article 제목, Board 제목/내용에서 검색)",
                     required = true,
@@ -58,7 +56,7 @@ public class SearchController {
         }
         Pageable pageable = PageRequest.of(page - 1, 10);
 
-        Page<UnifiedSearchResultDTO> results = unifiedSearchService.unifiedSearch(keyword, pageable);
+        UnifiedSearchResponseDTO results = unifiedSearchService.unifiedSearch(keyword, pageable);
         return ResponseEntity.ok(results);
     }
 }
