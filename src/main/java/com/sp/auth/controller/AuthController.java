@@ -109,7 +109,7 @@ public class AuthController {
             4. 콜백으로 자동 리다이렉트
             5. 최종적으로 프론트엔드로 리다이렉트 (토큰 포함)
 ```
-            https://yourfrontend.com/social-redirect-kakao?success=true&token={ACCESS_TOKEN}
+            https://yourfrontend.com/login?success=true
 ```
             """
     )
@@ -669,7 +669,7 @@ public class AuthController {
                 Duration.ofMillis(jwtTokenProvider.getExpirationTime()), envConfig);
         clearEphemeralCookies(response, envConfig);
 
-        String redirectUrl = envConfig.getFrontendUrl() + "/social-redirect-kakao?success=true";
+        String redirectUrl = envConfig.getFrontendUrl() + "/login?success=true";
         log.info("Redirecting to: {}", redirectUrl);
         response.sendRedirect(redirectUrl);
     }
@@ -766,7 +766,7 @@ public class AuthController {
     }
 
     private void redirectWithError(HttpServletResponse response, EnvironmentConfig envConfig, String errorCode) throws IOException {
-        String redirectUrl = envConfig.getFrontendUrl() + "/social-redirect-kakao?success=false&error=" + errorCode;
+        String redirectUrl = envConfig.getFrontendUrl() + "/login?success=false&error=" + errorCode;
         log.warn("OAuth redirect with error {} -> {}", errorCode, redirectUrl);
         clearEphemeralCookies(response, envConfig);
         response.sendRedirect(redirectUrl);
