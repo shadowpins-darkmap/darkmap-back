@@ -114,7 +114,7 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
                     Duration.ofMillis(jwtTokenProvider.getExpirationTime()));
 
             // 7. 즉시 리다이렉트 (DB 저장 완료 대기 안 함)
-            String redirectUrl = envConfig.getFrontendUrl() + "/social-redirect-google?success=true";
+            String redirectUrl = envConfig.getFrontendUrl() + "/login?success=true";
 
             log.info("✅ Google OAuth2 로그인 완료 - ID: {}, 소요시간: {}ms (비동기 작업 제외)",
                     member.getId(), System.currentTimeMillis() - startTime);
@@ -156,7 +156,7 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
                                    EnvironmentConfig envConfig,
                                    String errorCode) throws IOException {
         String redirectUrl = envConfig.getFrontendUrl() +
-                "/social-redirect-google?success=false&error=" + errorCode;
+                "/login?success=false&error=" + errorCode;
         log.warn("Google OAuth redirect with error {} -> {}", errorCode, redirectUrl);
         response.sendRedirect(redirectUrl);
     }
