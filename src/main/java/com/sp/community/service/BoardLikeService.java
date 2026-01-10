@@ -292,6 +292,16 @@ public class BoardLikeService {
         }
     }
 
+    private boolean isAuthorDeleted(Long authorId) {
+        try {
+            return memberRepository.findIsDeletedByMemberId(authorId)
+                    .orElse(false);
+        } catch (Exception e) {
+            log.warn("작성자 탈퇴 여부 조회 실패: authorId={}", authorId);
+            return false;
+        }
+    }
+
     /**
      * BoardEntity를 BoardVO로 변환 (이미지 한 개 첨부 지원)
      */
@@ -305,6 +315,7 @@ public class BoardLikeService {
                 .authorId(entity.getAuthorId())
                 .content(entity.getContent())
                 .authorNickname(getAuthorNickname(entity.getAuthorId()))
+                .authorDeleted(isAuthorDeleted(entity.getAuthorId()))
                 .category(entity.getCategory())
                 .viewCount(entity.getViewCount())
                 .likeCount(entity.getLikeCount())

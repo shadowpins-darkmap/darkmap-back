@@ -48,6 +48,11 @@ public class BoardVO {
     private String authorNickname;
 
     /**
+     * 작성자 탈퇴 여부
+     */
+    private Boolean authorDeleted;
+
+    /**
      * 카테고리
      */
     private String category;

@@ -427,6 +427,7 @@ public class BoardService {
                 .title(entity.getTitle())
                 .authorId(entity.getAuthorId())
                 .authorNickname(getAuthorNickname(entity.getAuthorId()))
+                .authorDeleted(isAuthorDeleted(entity.getAuthorId()))
                 .content(entity.getContent())
                 .category(entity.getCategory())
                 .viewCount(entity.getViewCount())
@@ -463,6 +464,7 @@ public class BoardService {
                 .content(entity.getContent())
                 .authorId(entity.getAuthorId())
                 .authorNickname(getAuthorNickname(entity.getAuthorId()))
+                .authorDeleted(isAuthorDeleted(entity.getAuthorId()))
                 .category(entity.getCategory())
                 .reportType(entity.getReportType())
                 .reportLocation(entity.getReportLocation())
@@ -538,6 +540,7 @@ public class BoardService {
                 .authorId(entity.getAuthorId())
                 .category(entity.getCategory())
                 .authorNickname(getAuthorNickname(entity.getAuthorId()))
+                .authorDeleted(isAuthorDeleted(entity.getAuthorId()))
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
                 .isReported(entity.getIsReported())
@@ -555,6 +558,16 @@ public class BoardService {
         } catch (Exception e) {
             log.warn("닉네임 조회 실패: authorId={}", authorId);
             return authorId.toString();
+        }
+    }
+
+    private boolean isAuthorDeleted(Long authorId) {
+        try {
+            return memberRepository.findIsDeletedByMemberId(authorId)
+                    .orElse(false);
+        } catch (Exception e) {
+            log.warn("작성자 탈퇴 여부 조회 실패: authorId={}", authorId);
+            return false;
         }
     }
 }

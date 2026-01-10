@@ -377,6 +377,16 @@ public class CommentService {
         }
     }
 
+    private boolean isAuthorDeleted(Long authorId) {
+        try {
+            return memberRepository.findIsDeletedByMemberId(authorId)
+                    .orElse(false);
+        } catch (Exception e) {
+            log.warn("작성자 탈퇴 여부 조회 실패: authorId={}", authorId);
+            return false;
+        }
+    }
+
     // ============ Private Helper Methods ============
 
     /**
@@ -420,6 +430,7 @@ public class CommentService {
                 .content(entity.getContent())
                 .authorId(entity.getAuthorId())
                 .authorNickname(getAuthorNickname(entity.getAuthorId()))
+                .authorDeleted(isAuthorDeleted(entity.getAuthorId()))
                 .likeCount(entity.getLikeCount())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())

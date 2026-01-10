@@ -47,6 +47,11 @@ public class CommentVO {
     private String authorNickname;
 
     /**
+     * 작성자 탈퇴 여부
+     */
+    private Boolean authorDeleted;
+
+    /**
      * 좋아요 수
      */
     private Integer likeCount;
