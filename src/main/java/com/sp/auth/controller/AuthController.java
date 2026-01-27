@@ -726,10 +726,8 @@ public class AuthController {
 
         if (!envConfig.isLocal() && StringUtils.hasText(envConfig.getCookieDomain())) {
             builder.domain(envConfig.getCookieDomain());
-            builder.sameSite("None");
-        } else {
-            builder.sameSite("Lax");
         }
+        builder.sameSite(envConfig.isLocal() ? "Lax" : "None");
 
         response.addHeader(HttpHeaders.SET_COOKIE, builder.build().toString());
     }
@@ -743,10 +741,8 @@ public class AuthController {
 
         if (!envConfig.isLocal() && StringUtils.hasText(envConfig.getCookieDomain())) {
             builder.domain(envConfig.getCookieDomain());
-            builder.sameSite("None");
-        } else {
-            builder.sameSite("Lax");
         }
+        builder.sameSite(envConfig.isLocal() ? "Lax" : "None");
 
         response.addHeader(HttpHeaders.SET_COOKIE, builder.build().toString());
     }

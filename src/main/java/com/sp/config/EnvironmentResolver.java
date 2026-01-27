@@ -108,16 +108,19 @@ public class EnvironmentResolver {
     }
 
     private String determineCookieDomain(HttpServletRequest request, boolean isLocal) {
+        String requestHost = resolveRequestHost(request);
         if (isLocal) {
-            String host = Optional.ofNullable(request.getServerName()).orElse("localhost");
-            return host;
+            return requestHost;
         }
         if (!fallbackCookieDomain.isBlank()) {
-            return fallbackCookieDomain;
+            String normalizedFallback = normalizeDomain(fallbackCookieDomain);
+            if (isDomainMatch(requestHost, normalizedFallback)) {
+                return normalizedFallback;
+            }
+            log.warn("Cookie domain '{}' does not match request host '{}'; falling back to host-only cookie",
+                    fallbackCookieDomain, requestHost);
         }
-        return Optional.ofNullable(request.getServerName())
-                .filter(host -> !host.isBlank())
-                .orElse("localhost");
+        return requestHost;
     }
 
     private static boolean isLocal(String url) {
@@ -134,5 +137,42 @@ public class EnvironmentResolver {
         }
         String lower = host.toLowerCase(Locale.ROOT);
         return lower.contains("localhost") || lower.contains("127.0.0.1");
+    }
+
+    private static String resolveRequestHost(HttpServletRequest request) {
+        String forwardedHost = request.getHeader("X-Forwarded-Host");
+        String hostHeader = forwardedHost != null && !forwardedHost.isBlank()
+                ? forwardedHost.split(",")[0].trim()
+                : request.getHeader("Host");
+        String host = (hostHeader == null || hostHeader.isBlank())
+                ? Optional.ofNullable(request.getServerName()).orElse("localhost")
+                : hostHeader;
+        return stripPort(host.toLowerCase(Locale.ROOT));
+    }
+
+    private static String stripPort(String host) {
+        if (host == null) {
+            return "localhost";
+        }
+        if (host.startsWith("[") && host.contains("]")) {
+            return host;
+        }
+        int colonIndex = host.indexOf(':');
+        return colonIndex > 0 ? host.substring(0, colonIndex) : host;
+    }
+
+    private static String normalizeDomain(String domain) {
+        String trimmed = domain == null ? "" : domain.trim().toLowerCase(Locale.ROOT);
+        if (trimmed.startsWith(".")) {
+            trimmed = trimmed.substring(1);
+        }
+        return trimmed;
+    }
+
+    private static boolean isDomainMatch(String host, String domain) {
+        if (host == null || domain == null || host.isBlank() || domain.isBlank()) {
+            return false;
+        }
+        return host.equals(domain) || host.endsWith("." + domain);
     }
 }

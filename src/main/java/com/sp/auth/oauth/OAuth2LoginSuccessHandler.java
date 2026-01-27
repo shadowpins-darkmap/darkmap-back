@@ -144,10 +144,8 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
 
         if (!envConfig.isLocal() && envConfig.getCookieDomain() != null) {
             builder.domain(envConfig.getCookieDomain());
-            builder.sameSite("None");
-        } else {
-            builder.sameSite("Lax");
         }
+        builder.sameSite(envConfig.isLocal() ? "Lax" : "None");
 
         response.addHeader(HttpHeaders.SET_COOKIE, builder.build().toString());
     }
