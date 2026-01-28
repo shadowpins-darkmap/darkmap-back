@@ -22,9 +22,20 @@ public class ArticleController {
         return "ok!";
     }
 
-    @GetMapping("/articles")
-    public List<ArticleListResponse> getArticlesList() {
+    @GetMapping("/articles_")
+    public List<ArticleListResponse> getArticlesList_() {
+        List<ArticleListResponse> temp0 = articleService.getArticlesList();
         return articleService.getArticlesList();
+    }
+
+    // 헤더추가 테스트
+    @GetMapping("/articles")
+    public ResponseEntity<List<ArticleListResponse>> getArticlesList() {
+        List<ArticleListResponse> temp0 = articleService.getArticlesList();
+        return ResponseEntity.ok().header("Content-Type", "application/json")
+                .header("Cache-Control", "max-age=300, stale-while-revalidate=59")
+                .body(temp0);
+
     }
 
     @GetMapping("/articles/sido")
