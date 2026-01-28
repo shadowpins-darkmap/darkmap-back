@@ -34,6 +34,7 @@ public class ArticleController {
         List<ArticleListResponse> temp0 = articleService.getArticlesList();
         return ResponseEntity.ok().header("Content-Type", "application/json")
                 .header("Cache-Control", "max-age=300, stale-while-revalidate=59")
+                .header("Access-Control-Expose-Headers", "Cache-Control")
                 .body(temp0);
 
     }
