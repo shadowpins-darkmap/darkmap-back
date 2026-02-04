@@ -1,24 +1,19 @@
 package com.sp.darkmap.controller;
 
-import com.sp.community.model.response.CommonApiResponse;
 import com.sp.community.service.BoardService;
-import com.sp.darkmap.model.vo.ArticleSaveRequest;
-import com.sp.member.service.MemberService;
+import com.sp.api.service.MemberService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.Map;
 
 @Tag(name = "Main", description = "메인 화면 API - 패널 정보 etc ")

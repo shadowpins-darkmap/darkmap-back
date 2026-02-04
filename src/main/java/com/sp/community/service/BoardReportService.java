@@ -10,7 +10,7 @@ import com.sp.community.persistent.entity.BoardReportEntity;
 import com.sp.community.persistent.repository.BoardReportRepository;
 import com.sp.community.persistent.repository.BoardRepository;
 import com.sp.config.FileProperties;
-import com.sp.member.persistent.repository.MemberRepository;
+import com.sp.api.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
