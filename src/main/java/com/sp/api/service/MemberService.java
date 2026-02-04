@@ -1,6 +1,6 @@
 package com.sp.api.service;
 
-import com.sp.api.exception.NicknameChangeException;
+import com.sp.exception.NicknameChangeException;
 import com.sp.api.dto.response.MemberInfoResponse;
 import com.sp.api.dto.response.NicknameChangeInfo;
 import com.sp.api.entity.Member;

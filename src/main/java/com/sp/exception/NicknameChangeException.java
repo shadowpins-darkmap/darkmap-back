@@ -1,4 +1,4 @@
-package com.sp.api.exception;
+package com.sp.exception;
 
 import java.time.format.DateTimeFormatter;
 

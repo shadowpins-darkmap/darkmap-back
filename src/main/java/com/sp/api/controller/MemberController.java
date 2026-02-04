@@ -5,7 +5,7 @@ import com.sp.community.model.dto.UserActivitySummaryDTO;
 import com.sp.community.service.BoardService;
 import com.sp.community.service.CommentService;
 import com.sp.community.service.UserNotificationService;
-import com.sp.api.exception.NicknameChangeException;
+import com.sp.exception.NicknameChangeException;
 import com.sp.api.dto.response.MemberInfoResponse;
 import com.sp.api.dto.request.UpdateNicknameRequest;
 import com.sp.api.dto.response.UpdateNicknameResponse;

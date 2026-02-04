@@ -1,4 +1,4 @@
-package com.sp.darkmap.controller;
+package com.sp.api.controller;
 
 import com.sp.community.service.BoardService;
 import com.sp.api.service.MemberService;

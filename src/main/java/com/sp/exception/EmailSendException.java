@@ -1,4 +1,4 @@
-package com.sp.common.mail.exception;
+package com.sp.exception;
 
 public class EmailSendException extends RuntimeException {
 
