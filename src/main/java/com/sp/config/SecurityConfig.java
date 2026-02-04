@@ -13,6 +13,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.oauth2.client.web.HttpSessionOAuth2AuthorizationRequestRepository;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
@@ -31,6 +32,11 @@ public class SecurityConfig {
     private final OAuth2LoginFailureHandler oAuth2LoginFailureHandler;
 
     @Bean
+    public HttpSessionOAuth2AuthorizationRequestRepository authorizationRequestRepository() {
+        return new HttpSessionOAuth2AuthorizationRequestRepository();
+    }
+
+    @Bean
     @Order(1)
     public SecurityFilterChain oauth2FilterChain(HttpSecurity http) throws Exception {
         http
@@ -39,15 +45,19 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
+                .sessionManagement(session -> session
+                        .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
+                )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-
                         .requestMatchers("/oauth2/**").permitAll()
                         .requestMatchers("/login/oauth2/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .oauth2Login(oauth -> oauth
+                        .authorizationEndpoint(authorization -> authorization
+                                .authorizationRequestRepository(authorizationRequestRepository())
+                        )
                         .successHandler(oAuth2LoginSuccessHandler)
                         .failureHandler(oAuth2LoginFailureHandler)
                 );
@@ -63,38 +73,27 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .sessionManagement(session -> session
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-
-                        // Swagger 관련 (인증 없이 접근)
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html").permitAll()
                         .requestMatchers("/v3/api-docs/**", "/api-docs/**").permitAll()
                         .requestMatchers("/swagger-resources/**").permitAll()
                         .requestMatchers("/webjars/**").permitAll()
-
-                        // 인증 없이 접근 가능한 엔드포인트
                         .requestMatchers("/api/v1/auth/**").permitAll()
                         .requestMatchers("/api/v1/main/**").permitAll()
                         .requestMatchers("/oauth2/**").permitAll()
                         .requestMatchers("/login/oauth2/**").permitAll()
                         .requestMatchers("/error").permitAll()
                         .requestMatchers("/api/v1/boards/popular").permitAll()
-
-                        // 인증이 필요한 엔드포인트
                         .requestMatchers("/api/v1/boards/**").authenticated()
                         .requestMatchers("/api/v1/members/**").authenticated()
-
-                        //파일 메인화면 이미지 노출 때문에 일단 열어둠
                         .requestMatchers("/files/**").permitAll()
-
-                        // 통합검색
                         .requestMatchers("/api/v1/search/**").permitAll()
-
-                        // 나머지는 허용
                         .anyRequest().permitAll()
                 )
-                // 인증 실패 시 401
                 .exceptionHandling(exception -> exception
                         .authenticationEntryPoint((request, response, authException) -> {
                             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
@@ -113,8 +112,8 @@ public class SecurityConfig {
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
+        // 기존 CORS 설정 그대로 유지
         CorsConfiguration config = new CorsConfiguration();
-
         config.setAllowedOrigins(Arrays.asList(
                 "https://kdark.weareshadowpins.com",
                 "https://darkmap-front-five.vercel.app",
@@ -122,17 +121,14 @@ public class SecurityConfig {
                 "http://localhost:3000",
                 "http://127.0.0.1:3000"
         ));
-
         config.setAllowedOriginPatterns(Arrays.asList(
                 "https://*.vercel.app",
                 "http://localhost:*",
                 "http://127.0.0.1:*"
         ));
-
         config.setAllowedMethods(Arrays.asList(
                 "GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH", "HEAD"
         ));
-
         config.setAllowedHeaders(Arrays.asList(
                 "Authorization",
                 "Content-Type",
@@ -143,17 +139,15 @@ public class SecurityConfig {
                 "Access-Control-Request-Headers",
                 "X-CSRF-TOKEN"
         ));
-
         config.setExposedHeaders(Arrays.asList(
                 "Authorization",
                 "Set-Cookie",
                 "Access-Control-Allow-Origin",
                 "Access-Control-Allow-Credentials"
         ));
-
         config.setAllowCredentials(true);
         config.setMaxAge(3600L);
-        config.setAllowCredentials(true); // 쿠키
+
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
         return source;
