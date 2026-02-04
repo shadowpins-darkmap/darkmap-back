@@ -4,7 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Getter
 @Builder
@@ -15,14 +15,14 @@ public class NicknameChangeInfo {
     private boolean canChange;
 
     @Schema(description = "현재 변경 횟수", example = "1")
-    private int changeCount;
+    private Integer changeCount;
 
     @Schema(description = "최대 변경 횟수", example = "3")
-    private int maxChangeCount;
+    private Integer maxChangeCount;
 
-    @Schema(description = "마지막 변경 일시", example = "2024-01-15T10:30:00")
-    private LocalDateTime lastChangeAt;
+    @Schema(description = "마지막 변경 일시 (UTC)", example = "2024-01-15T10:30:00Z")
+    private Instant lastChangeAt;
 
-    @Schema(description = "다음 변경 가능 일시", example = "2024-02-14T10:30:00")
-    private LocalDateTime nextAvailableAt;
+    @Schema(description = "다음 변경 가능 일시 (UTC)", example = "2024-02-14T10:30:00Z")
+    private Instant nextAvailableAt;
 }

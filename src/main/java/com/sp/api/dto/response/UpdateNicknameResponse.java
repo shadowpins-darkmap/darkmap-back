@@ -4,7 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Getter
 @Builder
@@ -31,9 +31,9 @@ public class UpdateNicknameResponse {
         private String nickname;
 
         @Schema(description = "닉네임 변경 횟수", example = "2")
-        private int changeCount;
+        private Integer changeCount;
 
-        @Schema(description = "마지막 변경 일시", example = "2024-01-15T10:30:00")
-        private LocalDateTime lastChangeAt;
+        @Schema(description = "마지막 변경 일시 (UTC)", example = "2024-01-15T10:30:00Z")
+        private Instant lastChangeAt;
     }
 }

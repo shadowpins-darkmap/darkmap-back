@@ -1,5 +1,7 @@
 package com.sp.exception;
 
+import java.time.Instant;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 
 public class NicknameChangeException extends RuntimeException {
@@ -22,9 +24,10 @@ public class NicknameChangeException extends RuntimeException {
         );
     }
 
-    public static NicknameChangeException tooSoon(java.time.LocalDateTime nextAvailableAt) {
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy년 MM월 dd일");
-        String formattedDate = nextAvailableAt.format(formatter);
+    public static NicknameChangeException tooSoon(Instant nextAvailableAt) {
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy년 MM월 dd일")
+                .withZone(ZoneId.systemDefault());
+        String formattedDate = formatter.format(nextAvailableAt);
 
         return new NicknameChangeException(
                 String.format("닉네임은 30일마다 변경 가능합니다. \n다음 변경 가능일: %s", formattedDate),

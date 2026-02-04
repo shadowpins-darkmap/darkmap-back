@@ -24,7 +24,7 @@ import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.time.Duration;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Slf4j
 @Component
@@ -56,10 +56,10 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
         EnvironmentConfig envConfig = environmentResolver.resolve(request);
 
         try {
-            // 1. Member 저장/조회 (동기 - 필수)
+            // 1. Member 저장/조회
             Member member = memberService.saveIfNotExists(email, providerId, AuthType.GOOGLE);
 
-            // ✅ 2. 탈퇴 여부 검증 추가
+            // 2. 탈퇴 여부 검증
             if (member.getIsDeleted()) {
                 log.warn("🚫 탈퇴한 회원의 구글 로그인 시도 차단 - ID: {}, Email: {}",
                         member.getId(), member.getEmail());
@@ -68,11 +68,11 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
                 return;
             }
 
-            // 3. JWT 토큰 생성 (동기 - 필수)
+            // 3. JWT 토큰 생성
             String accessToken = jwtTokenProvider.createAccessToken(member.getId(), member.getLevel());
             String refreshToken = jwtTokenProvider.createRefreshToken(member.getId());
 
-            // 4. Google Token 저장 (비동기 + 재시도)
+            // 4. Google Token 저장
             OAuth2AuthorizedClient authorizedClient =
                     authorizedClientService.loadAuthorizedClient("google", authentication.getName());
 
@@ -97,12 +97,12 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
                 }
             }
 
-            // 5. RefreshToken 저장 (동기)
+            // 5. RefreshToken 저장 (Instant 사용)
             try {
                 refreshTokenService.save(
                         member.getId(),
                         refreshToken,
-                        LocalDateTime.now().plusDays(7)
+                        Instant.now().plusSeconds(7L * 24 * 60 * 60) // 7일
                 );
             } catch (Exception e) {
                 log.error("❌ RefreshToken 저장 실패 - 사용자 ID: {}", member.getId(), e);
@@ -113,17 +113,16 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
             addCookie(response, envConfig, ACCESS_COOKIE, accessToken,
                     Duration.ofMillis(jwtTokenProvider.getExpirationTime()));
 
-            // 7. 즉시 리다이렉트 (DB 저장 완료 대기 안 함)
+            // 7. 즉시 리다이렉트
             String redirectUrl = envConfig.getFrontendUrl() + "/login?success=true";
 
-            log.info("✅ Google OAuth2 로그인 완료 - ID: {}, 소요시간: {}ms (비동기 작업 제외)",
+            log.info("✅ Google OAuth2 로그인 완료 - ID: {}, 소요시간: {}ms",
                     member.getId(), System.currentTimeMillis() - startTime);
             log.info("Redirecting to: {}", redirectUrl);
 
             response.sendRedirect(redirectUrl);
 
         } catch (WithdrawnMemberException e) {
-            // WithdrawnMemberException이 발생한 경우 (만약 saveIfNotExists에서 던진다면)
             redirectWithError(response, envConfig, "WITHDRAWN_MEMBER");
         } catch (Exception e) {
             log.error("❌ Google OAuth2 로그인 실패", e);

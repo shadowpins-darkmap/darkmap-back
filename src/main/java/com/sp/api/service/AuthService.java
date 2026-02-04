@@ -13,9 +13,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-import java.time.LocalDateTime;
 
 @Slf4j
 @Service
@@ -50,33 +50,34 @@ public class AuthService {
                 + (state != null ? "&state=" + state : "");
     }
 
+    @Transactional
     public AuthResponse loginWithKakao(String code) {
         long startTime = System.currentTimeMillis();
         log.info("🔐 카카오 로그인 시작");
 
-        // 1. 카카오 토큰 및 사용자 정보 조회 (동기 - 필수)
+        // 1. 카카오 토큰 및 사용자 정보 조회
         KakaoTokenResponse tokenResponse = kakaoOAuthClient.getTokenResponse(code);
         KakaoUserInfo userInfo = kakaoOAuthClient.getUserInfo(tokenResponse.getAccessToken());
 
-        // 2. 회원 저장/조회 (동기 - 필수)
+        // 2. 회원 저장/조회
         Member member = memberService.saveIfNotExists(
                 userInfo.getEmail(),
                 userInfo.getUserId(),
                 AuthType.KAKAO
         );
 
-        // ✅ 3. 탈퇴 여부 검증 추가
+        // 3. 탈퇴 여부 검증
         if (member.getIsDeleted()) {
             log.warn("🚫 탈퇴한 회원의 로그인 시도 차단 - ID: {}, Email: {}",
                     member.getId(), member.getEmail());
             throw new WithdrawnMemberException("탈퇴한 회원은 재가입이 불가능합니다.");
         }
 
-        // 4. JWT 토큰 생성 (동기 - 필수)
+        // 4. JWT 토큰 생성
         String jwt = jwtTokenProvider.createAccessToken(member.getId(), member.getLevel());
         String refreshToken = jwtTokenProvider.createRefreshToken(member.getId());
 
-        // 5. 카카오 토큰 저장 (동기 처리로 커넥션 잠식 방지)
+        // 5. 카카오 토큰 저장
         Instant expiresAt = Instant.now().plusSeconds(tokenResponse.getExpiresIn());
         try {
             kakaoTokenService.saveTokens(
@@ -89,18 +90,18 @@ public class AuthService {
             log.error("❌ 카카오 토큰 저장 실패 - 사용자 ID: {}", member.getId(), e);
         }
 
-        // 6. Refresh Token 저장 (동기)
+        // 6. Refresh Token 저장
         try {
             refreshTokenService.save(
                     member.getId(),
                     refreshToken,
-                    LocalDateTime.now().plusDays(7)
+                    Instant.now().plusSeconds(7L * 24 * 60 * 60) // 7일
             );
         } catch (Exception e) {
             log.error("❌ RefreshToken 저장 실패 - 사용자 ID: {}", member.getId(), e);
         }
 
-        log.info("✅ 카카오 로그인 완료 - ID: {}, 소요시간: {}ms (비동기 작업 제외)",
+        log.info("✅ 카카오 로그인 완료 - ID: {}, 소요시간: {}ms",
                 member.getId(), System.currentTimeMillis() - startTime);
 
         return AuthResponse.builder()
@@ -115,35 +116,30 @@ public class AuthService {
     }
 
     /**
-     * 카카오 연동 해제 (개선: 저장된 토큰 사용)
+     * 카카오 연동 해제
      */
+    @Transactional
     public void disconnectKakao(Long memberId) {
         try {
-            // 저장된 카카오 토큰 조회
             var kakaoToken = kakaoTokenService.findValidTokenByMemberId(memberId);
 
             if (kakaoToken.isPresent()) {
                 String accessToken = kakaoToken.get().getAccessToken();
 
                 try {
-                    // 카카오 API 연동 해제
                     kakaoOAuthClient.unlink(accessToken);
                     log.info("✅ 카카오 연동 해제 성공 - 사용자 ID: {}", memberId);
                 } catch (Exception e) {
                     log.warn("⚠️ 카카오 API 연동 해제 실패 (토큰 만료 가능성) - 사용자 ID: {}", memberId);
-                    // 실패해도 계속 진행 (우리 시스템에서는 탈퇴 처리)
                 }
 
-                // 저장된 카카오 토큰 삭제
                 kakaoTokenService.deleteByMemberId(memberId);
             } else {
                 log.warn("⚠️ 저장된 카카오 토큰이 없습니다 - 사용자 ID: {}", memberId);
-                // 토큰이 없어도 우리 시스템에서는 탈퇴 처리 진행
             }
 
         } catch (Exception e) {
             log.error("❌ 카카오 연동 해제 실패 - 사용자 ID: {}", memberId, e);
-            // 카카오 API 실패해도 우리 시스템에서는 탈퇴 처리 진행
         }
     }
 
@@ -161,8 +157,9 @@ public class AuthService {
     }
 
     /**
-     * 구글 연동 해제 (저장된 토큰 사용)
+     * 구글 연동 해제
      */
+    @Transactional
     public void disconnectGoogle(Long memberId) {
         try {
             var googleToken = googleTokenService.findValidTokenByMemberId(memberId);

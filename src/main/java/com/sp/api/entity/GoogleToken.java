@@ -2,31 +2,43 @@ package com.sp.api.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.Instant;
 
 @Entity
-@Table(name = "google_token")
+@Table(name = "google_token", indexes = {
+        @Index(name = "idx_refresh_token_expires_at", columnList = "expires_at"),
+        @Index(name = "idx_refresh_token_member_id", columnList = "member_id")
+})
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@EntityListeners(AuditingEntityListener.class)
 public class GoogleToken {
 
     @Id
-    @Column(name = "member_id")
-    private Long memberId;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "member_id", foreignKey = @ForeignKey(ConstraintMode.NO_CONSTRAINT))
+    private Member member;
 
     /**
      * Google Access Token
-     * columnDefinition = "TEXT"로 충분한 길이 확보 (최대 65,535자)
+     * 암호화된 토큰 저장 권장
      */
     @Column(name = "access_token", nullable = false, columnDefinition = "TEXT")
     private String accessToken;
 
     /**
      * Google Refresh Token
+     * Refresh Token은 최초 인증시에만 발급되므로 null 가능
      */
     @Column(name = "refresh_token", columnDefinition = "TEXT")
     private String refreshToken;
@@ -38,11 +50,25 @@ public class GoogleToken {
     private Instant expiresAt;
 
     /**
+     * Refresh Token 만료 시간 (선택사항)
+     */
+    @Column(name = "refresh_token_expires_at")
+    private Instant refreshTokenExpiresAt;
+
+    @CreatedDate
+    @Column(nullable = false, updatable = false)
+    private Instant createdAt;
+
+    @LastModifiedDate
+    private Instant updatedAt;
+
+    /**
      * 토큰 업데이트 (갱신)
+     * Refresh Token이 재발급된 경우
      */
     public void updateTokens(String accessToken, String refreshToken, Instant expiresAt) {
         this.accessToken = accessToken;
-        if (refreshToken != null) {
+        if (refreshToken != null && !refreshToken.isBlank()) {
             this.refreshToken = refreshToken;
         }
         this.expiresAt = expiresAt;
@@ -50,6 +76,7 @@ public class GoogleToken {
 
     /**
      * Access Token만 갱신
+     * Refresh Token은 유지
      */
     public void updateAccessToken(String accessToken, Instant expiresAt) {
         this.accessToken = accessToken;
@@ -68,5 +95,31 @@ public class GoogleToken {
      */
     public boolean isExpiringSoon() {
         return Instant.now().plusSeconds(300).isAfter(this.expiresAt);
+    }
+
+    /**
+     * 토큰 만료 임박 확인 (사용자 정의 시간)
+     * @param secondsBeforeExpiry 만료 전 확인할 초 단위 시간
+     */
+    public boolean isExpiringSoon(long secondsBeforeExpiry) {
+        return Instant.now().plusSeconds(secondsBeforeExpiry).isAfter(this.expiresAt);
+    }
+
+    /**
+     * Refresh Token 유효성 확인
+     */
+    public boolean hasValidRefreshToken() {
+        return this.refreshToken != null
+                && !this.refreshToken.isBlank()
+                && (this.refreshTokenExpiresAt == null || Instant.now().isBefore(this.refreshTokenExpiresAt));
+    }
+
+    /**
+     * 토큰 무효화 (로그아웃 시)
+     */
+    public void invalidate() {
+        this.accessToken = null;
+        this.refreshToken = null;
+        this.expiresAt = Instant.now();
     }
 }

@@ -12,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 @Slf4j
@@ -22,6 +23,9 @@ public class MemberService {
     private final MemberRepository memberRepository;
     private final BadWordFilter badWordFilter;
 
+    /**
+     * 회원 저장 (없으면 생성, 있으면 로그인 카운트 증가)
+     */
     @Transactional
     public Member saveIfNotExists(String email, String userId, AuthType type) {
         long startTime = System.currentTimeMillis();
@@ -48,7 +52,7 @@ public class MemberService {
             throw new IllegalStateException("이미 다른 소셜 로그인으로 가입된 이메일입니다.");
         }
 
-        // 2. 신규 회원 가입 - userNumber 조회 (최적화: 필요할 때만)
+        // 2. 신규 회원 가입 - userNumber 조회
         Integer lastUserNumber = memberRepository.findMaxUserNumber();
         int userNumber = (lastUserNumber != null ? lastUserNumber : 0) + 1;
         String nickname = NicknameGenerator.generateNickname(userNumber);
@@ -63,7 +67,7 @@ public class MemberService {
                 .level("BASIC")
                 .loginCount(1)
                 .visitCount(1)
-                .isDeleted(Boolean.FALSE)
+                .isDeleted(false)
                 .build());
 
         log.info("✅ 신규 회원 가입 완료 - ID: {}, userNumber: {}, 소요시간: {}ms",
@@ -72,32 +76,60 @@ public class MemberService {
         return newMember;
     }
 
+    /**
+     * ID로 회원 조회
+     */
     public Member findById(Long id) {
         return memberRepository.findById(id).orElse(null);
     }
 
+    /**
+     * ID로 회원 조회 (예외 발생)
+     */
+    public Member findByIdOrThrow(Long id) {
+        return memberRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다: " + id));
+    }
+
+    /**
+     * 회원 탈퇴 (소프트 삭제)
+     */
     @Transactional
     public void withdraw(Long id) {
         log.info("🗑️ 회원 탈퇴 처리 시작 - 사용자 ID: {}", id);
 
-        Optional<Member> memberOpt = memberRepository.findById(id);
-        if (memberOpt.isPresent()) {
-            Member member = memberOpt.get();
+        Member member = findByIdOrThrow(id);
 
-            if (member.getIsDeleted()) {
-                log.warn("⚠️ 이미 탈퇴한 회원 - 사용자 ID: {}", id);
-                throw new IllegalStateException("이미 탈퇴한 회원입니다.");
-            }
-
-            // 탈퇴 처리
-            member.setIsDeleted(true);
-            memberRepository.save(member);
-
-            log.info("✅ 회원 탈퇴 완료 - 사용자 ID: {}, 이메일: {}", id, member.getEmail());
-        } else {
-            log.error("❌ 탈퇴 실패: 존재하지 않는 회원 - 사용자 ID: {}", id);
-            throw new IllegalArgumentException("존재하지 않는 회원입니다.");
+        if (member.getIsDeleted()) {
+            log.warn("⚠️ 이미 탈퇴한 회원 - 사용자 ID: {}", id);
+            throw new IllegalStateException("이미 탈퇴한 회원입니다.");
         }
+
+        // 탈퇴 처리 (소프트 삭제)
+        member.softDelete();
+        memberRepository.save(member);
+
+        log.info("✅ 회원 탈퇴 완료 - 사용자 ID: {}, 이메일: {}", id, member.getEmail());
+    }
+
+    /**
+     * 회원 복구
+     */
+    @Transactional
+    public void restore(Long id) {
+        log.info("🔄 회원 복구 시작 - 사용자 ID: {}", id);
+
+        Member member = findByIdOrThrow(id);
+
+        if (!member.getIsDeleted()) {
+            log.warn("⚠️ 이미 활성 상태인 회원 - 사용자 ID: {}", id);
+            throw new IllegalStateException("이미 활성 상태인 회원입니다.");
+        }
+
+        member.restore();
+        memberRepository.save(member);
+
+        log.info("✅ 회원 복구 완료 - 사용자 ID: {}", id);
     }
 
     /**
@@ -105,27 +137,25 @@ public class MemberService {
      */
     @Transactional
     public MemberInfoResponse toggleMarketingAgreementById(Long id) {
-        Member member = findMemberByPrimaryKey(id);
+        Member member = findByIdOrThrow(id);
 
         boolean oldStatus = member.getMarketingAgreed();
         boolean newStatus = !oldStatus;
         member.updateMarketingAgreement(newStatus);
 
-        log.info("📧 마케팅 동의 상태 변경 - ID: {}, {} -> {}", id, oldStatus, newStatus);
+        log.info("🔧 마케팅 동의 상태 변경 - ID: {}, {} -> {}", id, oldStatus, newStatus);
 
         return MemberInfoResponse.from(member);
     }
 
-    private Member findMemberByPrimaryKey(Long id) {
-        return memberRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다: " + id));
-    }
-
+    /**
+     * 닉네임 변경
+     */
     @Transactional
     public Member updateNickname(Long memberId, String newNickname) {
-        Member member = memberRepository.findById(memberId)
-                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+        Member member = findByIdOrThrow(memberId);
 
+        // 닉네임 변경 가능 여부 확인
         if (!member.canChangeNickname()) {
             if (member.getNicknameChangeCount() >= 3) {
                 throw NicknameChangeException.reachedMaxCount();
@@ -134,30 +164,40 @@ public class MemberService {
             }
         }
 
-        if (newNickname.length() < 2 || newNickname.length() > 25) {
-            throw new IllegalArgumentException("닉네임은 2자 이상 25자 이하로 입력해주세요.");
-        }
+        // 닉네임 유효성 검증
+        validateNickname(newNickname, memberId);
 
-        if (badWordFilter.containsBadWord(newNickname)) {
-            throw new IllegalArgumentException("부적절한 단어가 포함된 닉네임입니다.");
-        }
-
-        if (memberRepository.existsByNicknameAndIdNot(newNickname, memberId)) {
-            throw new IllegalStateException("이미 사용 중인 닉네임입니다.");
-        }
-
+        // 닉네임 업데이트
         member.updateNickname(newNickname);
         return memberRepository.save(member);
     }
 
-    public long getTotalMemberCount() {
-        return memberRepository.count();
+    /**
+     * 닉네임 유효성 검증
+     */
+    private void validateNickname(String nickname, Long memberId) {
+        // 길이 체크
+        if (nickname.length() < 2 || nickname.length() > 25) {
+            throw new IllegalArgumentException("닉네임은 2자 이상 25자 이하로 입력해주세요.");
+        }
+
+        // 욕설 필터링
+        if (badWordFilter.containsBadWord(nickname)) {
+            throw new IllegalArgumentException("부적절한 단어가 포함된 닉네임입니다.");
+        }
+
+        // 중복 체크
+        if (memberRepository.existsByNicknameAndIdNot(nickname, memberId)) {
+            throw new IllegalStateException("이미 사용 중인 닉네임입니다.");
+        }
     }
 
+    /**
+     * 닉네임 변경 정보 조회
+     */
     @Transactional(readOnly = true)
     public NicknameChangeInfo getNicknameChangeInfo(Long memberId) {
-        Member member = memberRepository.findById(memberId)
-                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+        Member member = findByIdOrThrow(memberId);
 
         return NicknameChangeInfo.builder()
                 .canChange(member.canChangeNickname())
@@ -166,5 +206,26 @@ public class MemberService {
                 .lastChangeAt(member.getLastNicknameChangeAt())
                 .nextAvailableAt(member.getNextChangeAvailableAt())
                 .build();
+    }
+
+    /**
+     * 전체 회원 수 조회
+     */
+    public long getTotalMemberCount() {
+        return memberRepository.count();
+    }
+
+    /**
+     * 활성 회원 수 조회
+     */
+    public long getActiveMemberCount() {
+        return memberRepository.countByIsDeleted(false);
+    }
+
+    /**
+     * 탈퇴 회원 수 조회
+     */
+    public long getWithdrawnMemberCount() {
+        return memberRepository.countByIsDeleted(true);
     }
 }
