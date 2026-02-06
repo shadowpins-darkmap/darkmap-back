@@ -22,14 +22,12 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.util.StringUtils;
@@ -37,7 +35,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
 import java.time.Duration;
-import java.util.Arrays;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -79,8 +76,8 @@ public class AuthController {
     private final EnvironmentResolver environmentResolver;
     private final AuthBridgeResponder authBridgeResponder;
 
-    private static final String OAUTH_STATE_COOKIE = "oauth_state";
-    private static final String OAUTH_REDIRECT_COOKIE = "oauth_redirect";
+    private static final String OAUTH_STATE_SESSION = "oauth_state";
+    private static final String OAUTH_REDIRECT_SESSION = "oauth_redirect";
 
     /**
      * 카카오 로그인 - 카카오 인증 페이지로 리다이렉트
@@ -109,8 +106,7 @@ public class AuthController {
         EnvironmentConfig envConfig = environmentResolver.resolve(request, redirectOverride);
         String state = UUID.randomUUID().toString();
 
-        persistEphemeralCookie(response, envConfig, OAUTH_STATE_COOKIE, state, Duration.ofMinutes(10));
-        persistEphemeralCookie(response, envConfig, OAUTH_REDIRECT_COOKIE, envConfig.getFrontendUrl(), Duration.ofMinutes(10));
+        persistEphemeralState(request, state, envConfig.getFrontendUrl());
 
         String redirectUrl = authService.getKakaoAuthorizeUrl(state);
         response.sendRedirect(redirectUrl);
@@ -150,22 +146,22 @@ public class AuthController {
             HttpServletRequest request,
             HttpServletResponse response) throws IOException {
 
-        String redirectPreference = getCookieValue(request, OAUTH_REDIRECT_COOKIE).orElse(null);
+        String redirectPreference = getSessionValue(request, OAUTH_REDIRECT_SESSION).orElse(null);
         EnvironmentConfig envConfig = environmentResolver.resolve(request, redirectPreference);
 
         if (!validateState(request, state)) {
-            redirectWithError(response, envConfig, "INVALID_STATE");
+            redirectWithError(request, response, envConfig, "INVALID_STATE");
             return;
         }
 
         try {
             AuthResponse authResponse = authService.loginWithKakao(code);
-            clearEphemeralCookies(response, envConfig);
+            clearEphemeralState(request);
             authBridgeResponder.writeSuccess(response, envConfig, authResponse);
             return;
         } catch (WithdrawnMemberException e) {
             // 탈퇴 회원
-            redirectWithError(response, envConfig, "WITHDRAWN_MEMBER");
+            redirectWithError(request, response, envConfig, "WITHDRAWN_MEMBER");
         }
     }
 
@@ -610,72 +606,43 @@ public class AuthController {
         }
     }
 
-    private Optional<String> getCookieValue(HttpServletRequest request, String name) {
-        Cookie[] cookies = request.getCookies();
-        if (cookies == null) {
-            return Optional.empty();
-        }
-        return Arrays.stream(cookies)
-                .filter(cookie -> name.equals(cookie.getName()))
-                .map(Cookie::getValue)
-                .findFirst()
-                .filter(StringUtils::hasText);
-    }
-
-    private void persistEphemeralCookie(HttpServletResponse response, EnvironmentConfig envConfig, String name, String value, Duration maxAge) {
-        if (!StringUtils.hasText(value)) {
-            return;
-        }
-        addCookie(response, name, value, maxAge, true, envConfig);
-    }
-
-    private void addCookie(HttpServletResponse response, String name, String value, Duration maxAge, boolean httpOnly, EnvironmentConfig envConfig) {
-        ResponseCookie.ResponseCookieBuilder builder = ResponseCookie.from(name, value)
-                .path("/")
-                .httpOnly(httpOnly)
-                .secure(!envConfig.isLocal())
-                .maxAge(maxAge);
-
-        if (!envConfig.isLocal() && StringUtils.hasText(envConfig.getCookieDomain())) {
-            builder.domain(envConfig.getCookieDomain());
-        }
-        builder.sameSite(envConfig.isLocal() ? "Lax" : "None");
-
-        response.addHeader(HttpHeaders.SET_COOKIE, builder.build().toString());
-    }
-
-    private void clearCookie(HttpServletResponse response, String name, EnvironmentConfig envConfig) {
-        ResponseCookie.ResponseCookieBuilder builder = ResponseCookie.from(name, "")
-                .path("/")
-                .maxAge(0)
-                .httpOnly(true)
-                .secure(!envConfig.isLocal());
-
-        if (!envConfig.isLocal() && StringUtils.hasText(envConfig.getCookieDomain())) {
-            builder.domain(envConfig.getCookieDomain());
-        }
-        builder.sameSite(envConfig.isLocal() ? "Lax" : "None");
-
-        response.addHeader(HttpHeaders.SET_COOKIE, builder.build().toString());
-    }
-
-    private void clearEphemeralCookies(HttpServletResponse response, EnvironmentConfig envConfig) {
-        clearCookie(response, OAUTH_STATE_COOKIE, envConfig);
-        clearCookie(response, OAUTH_REDIRECT_COOKIE, envConfig);
-    }
-
     private boolean validateState(HttpServletRequest request, String incomingState) {
         if (!StringUtils.hasText(incomingState)) {
             return false;
         }
-        return getCookieValue(request, OAUTH_STATE_COOKIE)
+        return getSessionValue(request, OAUTH_STATE_SESSION)
                 .map(stored -> stored.equals(incomingState))
                 .orElse(false);
     }
 
-    private void redirectWithError(HttpServletResponse response, EnvironmentConfig envConfig, String errorCode) throws IOException {
+    private void redirectWithError(HttpServletRequest request, HttpServletResponse response, EnvironmentConfig envConfig, String errorCode) throws IOException {
         log.warn("OAuth redirect with error {}", errorCode);
-        clearEphemeralCookies(response, envConfig);
+        clearEphemeralState(request);
         authBridgeResponder.writeError(response, envConfig, errorCode);
+    }
+
+    private void persistEphemeralState(HttpServletRequest request, String state, String redirectUrl) {
+        HttpSession session = request.getSession(true);
+        session.setAttribute(OAUTH_STATE_SESSION, state);
+        session.setAttribute(OAUTH_REDIRECT_SESSION, redirectUrl);
+        session.setMaxInactiveInterval((int) Duration.ofMinutes(10).getSeconds());
+    }
+
+    private Optional<String> getSessionValue(HttpServletRequest request, String name) {
+        HttpSession session = request.getSession(false);
+        if (session == null) {
+            return Optional.empty();
+        }
+        Object value = session.getAttribute(name);
+        return value == null ? Optional.empty() : Optional.of(value.toString()).filter(StringUtils::hasText);
+    }
+
+    private void clearEphemeralState(HttpServletRequest request) {
+        HttpSession session = request.getSession(false);
+        if (session == null) {
+            return;
+        }
+        session.removeAttribute(OAUTH_STATE_SESSION);
+        session.removeAttribute(OAUTH_REDIRECT_SESSION);
     }
 }
