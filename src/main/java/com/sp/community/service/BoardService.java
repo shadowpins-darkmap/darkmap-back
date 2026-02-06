@@ -14,7 +14,7 @@ import com.sp.community.persistent.repository.BoardRepository;
 import com.sp.community.persistent.repository.BoardLikeRepository;
 import com.sp.community.persistent.repository.CommentRepository;
 import com.sp.community.model.response.FileUploadResponse;
-import com.sp.api.repository.MemberRepository;
+import com.sp.member.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;

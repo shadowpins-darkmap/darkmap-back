@@ -1,13 +1,13 @@
 package com.sp.community.controller;
 
-import com.sp.common.mail.service.EmailService;
+import com.sp.mail.service.EmailService;
 import com.sp.community.model.dto.CommentReportCreateDTO;
 import com.sp.community.model.response.CommonApiResponse;
 import com.sp.community.model.vo.CommentReportVO;
 import com.sp.community.persistent.entity.CommentReportEntity;
 import com.sp.community.service.CommentReportService;
 import com.sp.community.service.CommentService;
-import com.sp.api.repository.MemberRepository;
+import com.sp.member.repository.MemberRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;

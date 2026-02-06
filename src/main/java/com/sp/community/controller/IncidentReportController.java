@@ -1,6 +1,6 @@
 package com.sp.community.controller;
 
-import com.sp.common.mail.service.EmailService;
+import com.sp.mail.service.EmailService;
 import com.sp.community.model.dto.*;
 import com.sp.community.model.response.CommonApiResponse;
 import com.sp.community.model.vo.*;
@@ -17,8 +17,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-
-import java.util.List;
 
 /**
  * 제보 관련 API Controller

@@ -1,8 +1,8 @@
 package com.sp.config;
 
-import com.sp.api.security.filter.JwtAuthenticationFilter;
-import com.sp.api.oauth.handler.OAuth2LoginFailureHandler;
-import com.sp.api.oauth.handler.OAuth2LoginSuccessHandler;
+import com.sp.auth.security.filter.JwtAuthenticationFilter;
+import com.sp.auth.oauth.handler.OAuth2LoginFailureHandler;
+import com.sp.auth.oauth.handler.OAuth2LoginSuccessHandler;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;

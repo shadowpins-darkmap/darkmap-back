@@ -1,6 +1,6 @@
 package com.sp.community.service;
 
-import com.sp.common.mail.model.dto.CommentReportInfoDto;
+import com.sp.mail.dto.CommentReportInfoDto;
 import com.sp.exception.BoardNotFoundException;
 import com.sp.exception.CommentNotFoundException;
 import com.sp.exception.UnauthorizedException;
@@ -14,7 +14,7 @@ import com.sp.community.persistent.entity.CommentLikeEntity;
 import com.sp.community.persistent.repository.BoardRepository;
 import com.sp.community.persistent.repository.CommentRepository;
 import com.sp.community.persistent.repository.CommentLikeRepository;
-import com.sp.api.repository.MemberRepository;
+import com.sp.member.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;

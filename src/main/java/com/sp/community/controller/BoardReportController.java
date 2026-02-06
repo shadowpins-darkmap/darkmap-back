@@ -1,6 +1,6 @@
 package com.sp.community.controller;
 
-import com.sp.common.mail.service.EmailService;
+import com.sp.mail.service.EmailService;
 import com.sp.community.model.dto.BoardReportCreateDTO;
 import com.sp.community.model.vo.BoardReportVO;
 import com.sp.community.model.response.CommonApiResponse;
