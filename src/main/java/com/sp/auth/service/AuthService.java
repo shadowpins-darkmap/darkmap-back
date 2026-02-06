@@ -106,9 +106,10 @@ public class AuthService {
                 member.getId(), System.currentTimeMillis() - startTime);
 
         return AuthResponse.builder()
-                .jwtToken(jwt)
+                .accessToken(jwt)
                 .refreshToken(refreshToken)
                 .expiresIn(jwtTokenProvider.getExpirationTime())
+                .tokenType("Bearer")
                 .email(member.getEmail())
                 .userId(member.getId())
                 .nickname(member.getNickname())

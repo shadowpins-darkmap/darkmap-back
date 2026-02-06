@@ -1,8 +1,8 @@
 package com.sp.auth.controller;
 
+import com.sp.auth.dto.response.AuthResponse;
 import com.sp.auth.dto.request.RefreshRequest;
 import com.sp.auth.security.jwt.JwtTokenProvider;
-import com.sp.auth.dto.response.AuthResponse;
 import com.sp.auth.service.AuthService;
 import com.sp.config.EnvironmentConfig;
 import com.sp.config.EnvironmentResolver;
@@ -25,6 +25,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
@@ -47,31 +48,20 @@ import java.util.UUID;
         ## 인증 관리 API
      
         ### 인증 방식
-        - **Access Token**: 쿠키로 자동 관리 (30분 유효)
-        - **Refresh Token**: 쿠키로 자동 관리 (7일 유효)
-        - 프론트엔드에서 토큰을 직접 다룰 필요 없음
+        - **Access Token**: Authorization 헤더를 통해 Bearer 토큰으로 전달 (30분 유효)
+        - **Refresh Token**: 클라이언트 저장소에서 관리하며 `/refresh` API를 통해 재발급 (7일 유효)
+        - OAuth 콜백은 postMessage 기반 브리지 페이지로 토큰 payload를 프론트엔드에 전달합니다.
         
         ### 지원 기능
         - 카카오/구글 소셜 로그인
-        - 자동 토큰 갱신
-        - 로그아웃
-        - 회원 탈퇴
+        - 토큰 재발급, 로그아웃, 회원 탈퇴
+        - OAuth state 검증 및 에러 전달
         
         ## 🔍 Swagger UI 테스트 방법
-        
-        Swagger UI에서는 쿠키를 직접 테스트할 수 없습니다.
-       
-        ### 방법 1: 브라우저에서 로그인 후 테스트
-        1. 브라우저 새 탭에서 `/api/v1/auth/login/kakao` 접근
-        2. 로그인 완료 (쿠키 자동 설정됨)
-        3. Swagger UI로 돌아와서 API 테스트
-        4. 쿠키가 자동으로 전송되어 인증됨
-       
-        ### 방법 2: Bearer Token 직접 입력
-        1. 개발자 도구 → Application → Cookies
-        2. `access_token` 값 복사
-        3. Swagger "Authorize 🔓" 버튼 클릭
-        4. 복사한 토큰 입력 (Bearer 접두사 제외)
+        1. 브라우저 새 탭 또는 팝업에서 `/api/v1/auth/login/kakao`와 같은 로그인 엔드포인트 접근
+        2. 로그인 완료 후 프론트엔드가 수신한 Access Token을 복사
+        3. Swagger UI "Authorize 🔓" 버튼 클릭
+        4. `Bearer <token>` 형태로 입력하여 인증 후 API 호출
         """
 )
 @Slf4j
@@ -87,9 +77,8 @@ public class AuthController {
     private final TokenBlacklistService tokenBlacklistService;
     private final KakaoTokenService kakaoTokenService;
     private final EnvironmentResolver environmentResolver;
+    private final AuthBridgeResponder authBridgeResponder;
 
-    private static final String REFRESH_COOKIE = "refresh_token";
-    private static final String ACCESS_COOKIE = "access_token";
     private static final String OAUTH_STATE_COOKIE = "oauth_state";
     private static final String OAUTH_REDIRECT_COOKIE = "oauth_redirect";
 
@@ -108,10 +97,7 @@ public class AuthController {
             2. 카카오 로그인 페이지 표시
             3. 사용자 인증 완료
             4. 콜백으로 자동 리다이렉트
-            5. 최종적으로 프론트엔드로 리다이렉트 (토큰 포함)
-```
-            https://yourfrontend.com/login?success=true
-```
+            5. 콜백 페이지가 postMessage로 토큰 payload를 프론트엔드에 전달
             """
     )
     @GetMapping("/login/kakao")
@@ -174,7 +160,9 @@ public class AuthController {
 
         try {
             AuthResponse authResponse = authService.loginWithKakao(code);
-            setTokensAndRedirect(authResponse, response, envConfig);
+            clearEphemeralCookies(response, envConfig);
+            authBridgeResponder.writeSuccess(response, envConfig, authResponse);
+            return;
         } catch (WithdrawnMemberException e) {
             // 탈퇴 회원
             redirectWithError(response, envConfig, "WITHDRAWN_MEMBER");
@@ -264,9 +252,8 @@ public class AuthController {
     @DeleteMapping("/withdraw/kakao")
     public ResponseEntity<?> withdrawKakao(
             @Parameter(hidden = true) @AuthenticationPrincipal Long id,
-            HttpServletRequest httpRequest,
-            HttpServletResponse response) {
-        return processWithdrawal(id, httpRequest, response, AuthType.KAKAO);
+            HttpServletRequest httpRequest) {
+        return processWithdrawal(id, httpRequest, AuthType.KAKAO);
     }
 
     /**
@@ -322,9 +309,8 @@ public class AuthController {
     @DeleteMapping("/withdraw/google")
     public ResponseEntity<?> withdrawGoogle(
             @Parameter(hidden = true) @AuthenticationPrincipal Long id,
-            HttpServletRequest httpRequest,
-            HttpServletResponse response) {
-        return processWithdrawal(id, httpRequest, response, AuthType.GOOGLE);
+            HttpServletRequest httpRequest) {
+        return processWithdrawal(id, httpRequest, AuthType.GOOGLE);
     }
 
     /**
@@ -366,9 +352,8 @@ public class AuthController {
     @DeleteMapping("/withdraw")
     public ResponseEntity<?> withdrawAuto(
             @Parameter(hidden = true) @AuthenticationPrincipal Long id,
-            HttpServletRequest httpRequest,
-            HttpServletResponse response) {
-        return processWithdrawal(id, httpRequest, response, null);
+            HttpServletRequest httpRequest) {
+        return processWithdrawal(id, httpRequest, null);
     }
 
     private String getTokenFromRequest(HttpServletRequest request) {
@@ -376,23 +361,12 @@ public class AuthController {
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             return authHeader.substring(7);
         }
-
-        Cookie[] cookies = request.getCookies();
-        if (cookies != null) {
-            return Arrays.stream(cookies)
-                    .filter(cookie -> "access_token".equals(cookie.getName()))
-                    .map(Cookie::getValue)
-                    .findFirst()
-                    .orElse(null);
-        }
-
         return null;
     }
 
     private ResponseEntity<?> processWithdrawal(
             Long memberId,
             HttpServletRequest request,
-            HttpServletResponse response,
             AuthType requiredType) {
 
         if (memberId == null) {
@@ -400,7 +374,6 @@ public class AuthController {
         }
 
         try {
-            EnvironmentConfig envConfig = environmentResolver.resolve(request);
             Member member = memberService.findById(memberId);
 
             if (member == null || member.getIsDeleted()) {
@@ -439,8 +412,6 @@ public class AuthController {
 
             memberService.withdraw(memberId);
             refreshTokenService.deleteByMemberId(memberId);
-
-            clearTokenCookies(response, envConfig);
 
             String successMessage = memberType == AuthType.KAKAO
                     ? "카카오 탈퇴가 완료되었습니다."
@@ -503,13 +474,11 @@ public class AuthController {
     @PostMapping("/logout")
     public ResponseEntity<?> logout(
             @Parameter(hidden = true) @AuthenticationPrincipal Long id,
-            HttpServletRequest request,
-            HttpServletResponse response) {
+            HttpServletRequest request) {
         if (id == null) {
             return ResponseEntity.status(401).body(Map.of("error", "인증이 필요합니다."));
         }
         try {
-            EnvironmentConfig envConfig = environmentResolver.resolve(request);
             // JWT 토큰 블랙리스트 처리
             String token = getTokenFromRequest(request);
             if (token != null) {
@@ -517,7 +486,6 @@ public class AuthController {
             }
 
             refreshTokenService.deleteByMemberId(id);
-            clearTokenCookies(response, envConfig);
 
             log.info("✅ 로그아웃 완료 - 사용자 ID: {}", id);
             return ResponseEntity.ok().body(Map.of("message", "로그아웃이 완료되었습니다."));
@@ -533,8 +501,7 @@ public class AuthController {
      */
     @Operation(
             summary = "Access Token 갱신",
-            description = "Refresh Token을 사용하여 새로운 Access Token을 발급받습니다. " +
-                    "Refresh Token은 쿠키 또는 request body로 전송할 수 있습니다."
+            description = "Refresh Token을 request body로 전송하여 새로운 Access Token을 발급받습니다."
     )
     @ApiResponses({
             @ApiResponse(
@@ -588,8 +555,8 @@ public class AuthController {
             )
     })
     @io.swagger.v3.oas.annotations.parameters.RequestBody(
-            description = "Refresh Token (선택사항 - 쿠키로도 전송 가능)",
-            required = false,
+            description = "Refresh Token (JSON body)",
+            required = true,
             content = @Content(
                     mediaType = "application/json",
                     schema = @Schema(implementation = RefreshRequest.class),
@@ -603,26 +570,10 @@ public class AuthController {
             )
     )
     @PostMapping("/refresh")
-    public ResponseEntity<?> refreshToken(
-            @RequestBody(required = false) RefreshRequest refreshRequest,
-            HttpServletRequest request,
-            HttpServletResponse response) {
+    public ResponseEntity<?> refreshToken(@Valid @RequestBody RefreshRequest refreshRequest) {
+        String refreshToken = refreshRequest.getRefreshToken();
 
-        String refreshToken = null;
-
-        // 1. body에서 먼저 확인 (프론트엔드가 localStorage에서 보낸 경우)
-        if (refreshRequest != null && refreshRequest.getRefreshToken() != null) {
-            refreshToken = refreshRequest.getRefreshToken();
-            log.info("📱 Refresh token from request body");
-        }
-
-        // 2. 없으면 쿠키에서 확인 (기존 방식 호환)
-        if (refreshToken == null) {
-            refreshToken = getRefreshTokenFromCookie(request);
-            log.info("🍪 Refresh token from cookie");
-        }
-
-        if (refreshToken == null) {
+        if (!StringUtils.hasText(refreshToken)) {
             return ResponseEntity.status(401).body(Map.of("error", "Refresh token이 없습니다."));
         }
 
@@ -644,14 +595,12 @@ public class AuthController {
             }
 
             String newAccessToken = jwtTokenProvider.createAccessToken(memberId, member.getLevel());
-            EnvironmentConfig envConfig = environmentResolver.resolve(request);
-            addTokenCookie(response, ACCESS_COOKIE, newAccessToken,
-                    Duration.ofMillis(jwtTokenProvider.getExpirationTime()), envConfig);
 
             log.info("✅ 토큰 갱신 완료 - 사용자 ID: {}", memberId);
 
             return ResponseEntity.ok(Map.of(
                     "accessToken", newAccessToken,
+                    "tokenType", "Bearer",
                     "expiresIn", jwtTokenProvider.getExpirationTime()
             ));
 
@@ -659,37 +608,6 @@ public class AuthController {
             log.error("❌ 토큰 갱신 실패", e);
             return ResponseEntity.status(401).body(Map.of("error", "토큰 갱신 실패"));
         }
-    }
-
-    private void setTokensAndRedirect(AuthResponse authResponse, HttpServletResponse response, EnvironmentConfig envConfig) throws IOException {
-        log.info("Environment detected - Frontend: {}, Cookie Domain: {}, Is Local: {}",
-                envConfig.getFrontendUrl(), envConfig.getCookieDomain(), envConfig.isLocal());
-
-        addTokenCookie(response, REFRESH_COOKIE, authResponse.getRefreshToken(), Duration.ofDays(7), envConfig);
-        addTokenCookie(response, ACCESS_COOKIE, authResponse.getJwtToken(),
-                Duration.ofMillis(jwtTokenProvider.getExpirationTime()), envConfig);
-        clearEphemeralCookies(response, envConfig);
-
-        String redirectUrl = envConfig.getFrontendUrl() + "/login?success=true";
-        log.info("Redirecting to: {}", redirectUrl);
-        response.sendRedirect(redirectUrl);
-    }
-
-    private void clearTokenCookies(HttpServletResponse response, EnvironmentConfig envConfig) {
-        clearCookie(response, REFRESH_COOKIE, envConfig);
-        clearCookie(response, ACCESS_COOKIE, envConfig);
-    }
-
-    private String getRefreshTokenFromCookie(HttpServletRequest request) {
-        Cookie[] cookies = request.getCookies();
-        if (cookies != null) {
-            return Arrays.stream(cookies)
-                    .filter(cookie -> REFRESH_COOKIE.equals(cookie.getName()))
-                    .map(Cookie::getValue)
-                    .findFirst()
-                    .orElse(null);
-        }
-        return null;
     }
 
     private Optional<String> getCookieValue(HttpServletRequest request, String name) {
@@ -702,13 +620,6 @@ public class AuthController {
                 .map(Cookie::getValue)
                 .findFirst()
                 .filter(StringUtils::hasText);
-    }
-
-    private void addTokenCookie(HttpServletResponse response, String name, String value, Duration maxAge, EnvironmentConfig envConfig) {
-        if (!StringUtils.hasText(value)) {
-            return;
-        }
-        addCookie(response, name, value, maxAge, true, envConfig);
     }
 
     private void persistEphemeralCookie(HttpServletResponse response, EnvironmentConfig envConfig, String name, String value, Duration maxAge) {
@@ -763,9 +674,8 @@ public class AuthController {
     }
 
     private void redirectWithError(HttpServletResponse response, EnvironmentConfig envConfig, String errorCode) throws IOException {
-        String redirectUrl = envConfig.getFrontendUrl() + "/login?success=false&error=" + errorCode;
-        log.warn("OAuth redirect with error {} -> {}", errorCode, redirectUrl);
+        log.warn("OAuth redirect with error {}", errorCode);
         clearEphemeralCookies(response, envConfig);
-        response.sendRedirect(redirectUrl);
+        authBridgeResponder.writeError(response, envConfig, errorCode);
     }
 }

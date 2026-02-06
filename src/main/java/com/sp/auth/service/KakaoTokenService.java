@@ -26,7 +26,7 @@ public class KakaoTokenService {
      */
     @Transactional
     public void saveTokens(Long memberId, String accessToken, String refreshToken, Instant expiresAt) {
-        Optional<KakaoToken> existingToken = kakaoTokenRepository.findById(memberId);
+        Optional<KakaoToken> existingToken = kakaoTokenRepository.findByMember_Id(memberId);
 
         if (existingToken.isPresent()) {
             KakaoToken token = existingToken.get();
@@ -55,7 +55,7 @@ public class KakaoTokenService {
      */
     @Transactional
     public void updateAccessToken(Long memberId, String accessToken, Instant expiresAt) {
-        KakaoToken token = kakaoTokenRepository.findById(memberId)
+        KakaoToken token = kakaoTokenRepository.findByMember_Id(memberId)
                 .orElseThrow(() -> new IllegalArgumentException("저장된 카카오 토큰이 없습니다: " + memberId));
 
         token.updateAccessToken(accessToken, expiresAt);
@@ -67,14 +67,14 @@ public class KakaoTokenService {
      * memberId로 토큰 조회
      */
     public Optional<KakaoToken> findByMemberId(Long memberId) {
-        return kakaoTokenRepository.findById(memberId);
+        return kakaoTokenRepository.findByMember_Id(memberId);
     }
 
     /**
      * 유효한 토큰만 반환 (만료되지 않은 토큰)
      */
     public Optional<KakaoToken> findValidTokenByMemberId(Long memberId) {
-        Optional<KakaoToken> tokenOpt = kakaoTokenRepository.findById(memberId);
+        Optional<KakaoToken> tokenOpt = kakaoTokenRepository.findByMember_Id(memberId);
 
         if (tokenOpt.isPresent()) {
             KakaoToken token = tokenOpt.get();
@@ -116,7 +116,7 @@ public class KakaoTokenService {
      */
     @Transactional
     public void invalidateToken(Long memberId) {
-        Optional<KakaoToken> tokenOpt = kakaoTokenRepository.findById(memberId);
+        Optional<KakaoToken> tokenOpt = kakaoTokenRepository.findByMember_Id(memberId);
 
         if (tokenOpt.isPresent()) {
             KakaoToken token = tokenOpt.get();
@@ -131,7 +131,7 @@ public class KakaoTokenService {
      */
     @Transactional
     public void deleteByMemberId(Long memberId) {
-        kakaoTokenRepository.deleteById(memberId);
+        kakaoTokenRepository.deleteByMemberId(memberId);
         log.info("카카오 토큰 삭제 완료 - 사용자 ID: {}", memberId);
     }
 

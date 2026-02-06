@@ -1,5 +1,7 @@
 package com.sp.auth.oauth.handler;
 
+import com.sp.auth.controller.AuthBridgeResponder;
+import com.sp.auth.dto.response.AuthResponse;
 import com.sp.auth.security.jwt.JwtTokenProvider;
 import com.sp.config.EnvironmentConfig;
 import com.sp.config.EnvironmentResolver;
@@ -13,8 +15,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.ResponseCookie;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClient;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService;
@@ -23,7 +23,6 @@ import org.springframework.security.web.authentication.AuthenticationSuccessHand
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
-import java.time.Duration;
 import java.time.Instant;
 
 @Slf4j
@@ -37,9 +36,7 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
     private final OAuth2AuthorizedClientService authorizedClientService;
     private final GoogleTokenService googleTokenService;
     private final EnvironmentResolver environmentResolver;
-
-    private static final String REFRESH_COOKIE = "refresh_token";
-    private static final String ACCESS_COOKIE = "access_token";
+    private final AuthBridgeResponder authBridgeResponder;
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request,
@@ -71,6 +68,16 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
             // 3. JWT 토큰 생성
             String accessToken = jwtTokenProvider.createAccessToken(member.getId(), member.getLevel());
             String refreshToken = jwtTokenProvider.createRefreshToken(member.getId());
+            AuthResponse authResponse = AuthResponse.builder()
+                    .accessToken(accessToken)
+                    .refreshToken(refreshToken)
+                    .expiresIn(jwtTokenProvider.getExpirationTime())
+                    .tokenType("Bearer")
+                    .email(member.getEmail())
+                    .userId(member.getId())
+                    .nickname(member.getNickname())
+                    .loginCount(member.getLoginCount())
+                    .build();
 
             // 4. Google Token 저장
             OAuth2AuthorizedClient authorizedClient =
@@ -108,19 +115,10 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
                 log.error("❌ RefreshToken 저장 실패 - 사용자 ID: {}", member.getId(), e);
             }
 
-            // 6. 환경 설정 및 쿠키 설정
-            addCookie(response, envConfig, REFRESH_COOKIE, refreshToken, Duration.ofDays(7));
-            addCookie(response, envConfig, ACCESS_COOKIE, accessToken,
-                    Duration.ofMillis(jwtTokenProvider.getExpirationTime()));
-
-            // 7. 즉시 리다이렉트
-            String redirectUrl = envConfig.getFrontendUrl() + "/login?success=true";
-
+            // 6. postMessage bridge로 토큰 전달
             log.info("✅ Google OAuth2 로그인 완료 - ID: {}, 소요시간: {}ms",
                     member.getId(), System.currentTimeMillis() - startTime);
-            log.info("Redirecting to: {}", redirectUrl);
-
-            response.sendRedirect(redirectUrl);
+            authBridgeResponder.writeSuccess(response, envConfig, authResponse);
 
         } catch (WithdrawnMemberException e) {
             redirectWithError(response, envConfig, "WITHDRAWN_MEMBER");
@@ -130,31 +128,10 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
         }
     }
 
-    private void addCookie(HttpServletResponse response,
-                           EnvironmentConfig envConfig,
-                           String name,
-                           String value,
-                           Duration maxAge) {
-        ResponseCookie.ResponseCookieBuilder builder = ResponseCookie.from(name, value)
-                .httpOnly(true)
-                .secure(!envConfig.isLocal())
-                .path("/")
-                .maxAge(maxAge);
-
-        if (!envConfig.isLocal() && envConfig.getCookieDomain() != null) {
-            builder.domain(envConfig.getCookieDomain());
-        }
-        builder.sameSite(envConfig.isLocal() ? "Lax" : "None");
-
-        response.addHeader(HttpHeaders.SET_COOKIE, builder.build().toString());
-    }
-
     private void redirectWithError(HttpServletResponse response,
                                    EnvironmentConfig envConfig,
                                    String errorCode) throws IOException {
-        String redirectUrl = envConfig.getFrontendUrl() +
-                "/login?success=false&error=" + errorCode;
-        log.warn("Google OAuth redirect with error {} -> {}", errorCode, redirectUrl);
-        response.sendRedirect(redirectUrl);
+        log.warn("Google OAuth redirect with error {}", errorCode);
+        authBridgeResponder.writeError(response, envConfig, errorCode);
     }
 }

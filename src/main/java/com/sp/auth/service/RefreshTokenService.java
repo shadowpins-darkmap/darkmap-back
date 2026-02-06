@@ -30,7 +30,7 @@ public class RefreshTokenService {
      */
     @Transactional
     public void save(Long memberId, String token, Instant expiresAt) {
-        Optional<RefreshToken> existingToken = refreshTokenRepository.findById(memberId);
+        Optional<RefreshToken> existingToken = refreshTokenRepository.findByMember_Id(memberId);
 
         if (existingToken.isPresent()) {
             RefreshToken refreshToken = existingToken.get();
@@ -67,14 +67,14 @@ public class RefreshTokenService {
      * memberId로 조회
      */
     public Optional<RefreshToken> findByMemberId(Long memberId) {
-        return refreshTokenRepository.findById(memberId);
+        return refreshTokenRepository.findByMember_Id(memberId);
     }
 
     /**
      * 유효한 Refresh Token 조회
      */
     public Optional<RefreshToken> findValidByMemberId(Long memberId) {
-        return refreshTokenRepository.findById(memberId)
+        return refreshTokenRepository.findByMember_Id(memberId)
                 .filter(RefreshToken::isValid);
     }
 
@@ -83,7 +83,7 @@ public class RefreshTokenService {
      */
     @Transactional
     public void renewToken(Long memberId, String newToken, Instant expiresAt) {
-        RefreshToken refreshToken = refreshTokenRepository.findById(memberId)
+        RefreshToken refreshToken = refreshTokenRepository.findByMember_Id(memberId)
                 .orElseThrow(() -> new IllegalArgumentException("저장된 Refresh Token이 없습니다: " + memberId));
 
         refreshToken.renewToken(newToken, expiresAt);
@@ -97,7 +97,7 @@ public class RefreshTokenService {
      */
     @Transactional
     public void recordUsage(Long memberId) {
-        RefreshToken refreshToken = refreshTokenRepository.findById(memberId)
+        RefreshToken refreshToken = refreshTokenRepository.findByMember_Id(memberId)
                 .orElseThrow(() -> new IllegalArgumentException("저장된 Refresh Token이 없습니다: " + memberId));
 
         refreshToken.recordUsage();
@@ -109,7 +109,7 @@ public class RefreshTokenService {
      */
     @Transactional
     public void deleteByMemberId(Long memberId) {
-        refreshTokenRepository.deleteById(memberId);
+        refreshTokenRepository.deleteByMemberId(memberId);
         log.info("Refresh Token 삭제 완료 - 사용자 ID: {}", memberId);
     }
 
@@ -127,7 +127,7 @@ public class RefreshTokenService {
      */
     @Transactional
     public void invalidateToken(Long memberId) {
-        Optional<RefreshToken> tokenOpt = refreshTokenRepository.findById(memberId);
+        Optional<RefreshToken> tokenOpt = refreshTokenRepository.findByMember_Id(memberId);
 
         if (tokenOpt.isPresent()) {
             RefreshToken token = tokenOpt.get();

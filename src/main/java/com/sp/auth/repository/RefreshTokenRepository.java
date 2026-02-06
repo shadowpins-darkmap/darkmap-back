@@ -20,6 +20,11 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long
     Optional<RefreshToken> findByToken(String token);
 
     /**
+     * 멤버 ID로 조회
+     */
+    Optional<RefreshToken> findByMember_Id(Long memberId);
+
+    /**
      * 만료된 Refresh Token 삭제
      */
     @Modifying
@@ -35,4 +40,11 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long
      * 토큰으로 삭제
      */
     void deleteByToken(String token);
+
+    /**
+     * 멤버 ID로 삭제
+     */
+    @Modifying
+    @Query("DELETE FROM RefreshToken r WHERE r.member.id = :memberId")
+    void deleteByMemberId(@Param("memberId") Long memberId);
 }
