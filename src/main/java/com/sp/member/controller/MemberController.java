@@ -152,21 +152,22 @@ public class MemberController {
         }
         UserActivitySummaryDTO userActivitySummaryDTO = userNotificationService.getActivitySummary(memberId, 48);
 
-        return ResponseEntity.ok(Map.of(
-                "id", member.getId(),
-                "email", member.getEmail(),
-                "nickname", member.getNickname(),
-                "level", member.getLevel(),
-                "loginCount", member.getLoginCount(),
-                "joinedAt", member.getJoinedAt(),
-                "myCommentCount", 0,   // 사용자의 총 댓글 수
-                "newCommentsCount", 0,   // 새 댓글 수 (48시간)
-                "newLikesCount", 0,         // 새 추천 수 (48시간)
-                "approvedReportCount", 0 // 사용자의 제보 중 지도에 등록된 수
-                //"myCommentCount", commentService.getMemberCommentCount(memberId),   // 사용자의 총 댓글 수
-                //"newCommentsCount", userActivitySummaryDTO.getNewCommentsCount(),   // 새 댓글 수 (48시간)
-                //"newLikesCount", userActivitySummaryDTO.getNewLikesCount(),         // 새 추천 수 (48시간)
-                //"approvedReportCount", boardService.getApprovedReportCountByAuthor(memberId) // 사용자의 제보 중 지도에 등록된 수
+        return ResponseEntity.ok(Map.ofEntries(
+                Map.entry("id", member.getId()),
+                Map.entry("email", member.getEmail()),
+                Map.entry("nickname", member.getNickname()),
+                Map.entry("level", member.getLevel()),
+                Map.entry("loginCount", member.getLoginCount()),
+                Map.entry("joinedAt", member.getJoinedAt()),
+                Map.entry("myCommentCount", 0),   // 사용자의 총 댓글 수
+                Map.entry("newCommentsCount", 0),   // 새 댓글 수 (48시간)
+                Map.entry("newLikesCount", 0),         // 새 추천 수 (48시간)
+                Map.entry("approvedReportCount", 0), // 사용자의 제보 중 지도에 등록된 수
+                Map.entry("marketingAgreed", member.getMarketingAgreed()) // 마케팅 수신 동의 여부
+                // Map.entry("myCommentCount", commentService.getMemberCommentCount(memberId)),   // 사용자의 총 댓글 수
+                // Map.entry("newCommentsCount", userActivitySummaryDTO.getNewCommentsCount()),   // 새 댓글 수 (48시간)
+                // Map.entry("newLikesCount", userActivitySummaryDTO.getNewLikesCount()),         // 새 추천 수 (48시간)
+                // Map.entry("approvedReportCount", boardService.getApprovedReportCountByAuthor(memberId)) // 사용자의 제보 중 지도에 등록된 수
         ));
     }
 
