@@ -95,8 +95,16 @@ public class KakaoOAuthClient {
             );
 
             JsonNode json = objectMapper.readTree(response.getBody());
-            String email = json.get("kakao_account").get("email").asText();
-            String userId = json.get("id").asText();
+            JsonNode accountNode = json.path("kakao_account");
+            String email = accountNode.path("email").asText(null);
+            String userId = json.path("id").asText(null);
+
+            if (email == null || email.isBlank()) {
+                throw new IllegalStateException("카카오 계정에서 이메일 정보를 제공하지 않았습니다.");
+            }
+            if (userId == null || userId.isBlank()) {
+                throw new IllegalStateException("카카오 사용자 ID를 확인할 수 없습니다.");
+            }
 
             return new KakaoUserInfo(email, userId);
 

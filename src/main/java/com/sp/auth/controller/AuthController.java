@@ -160,8 +160,13 @@ public class AuthController {
             authBridgeResponder.writeSuccess(response, envConfig, authResponse);
             return;
         } catch (WithdrawnMemberException e) {
-            // 탈퇴 회원
             redirectWithError(request, response, envConfig, "WITHDRAWN_MEMBER");
+        } catch (IllegalStateException e) {
+            log.error("카카오 사용자 정보가 누락되었습니다: {}", e.getMessage());
+            redirectWithError(request, response, envConfig, "KAKAO_ACCOUNT_INCOMPLETE");
+        } catch (Exception e) {
+            log.error("카카오 로그인 처리 중 알 수 없는 오류", e);
+            redirectWithError(request, response, envConfig, "SERVER_ERROR");
         }
     }
 

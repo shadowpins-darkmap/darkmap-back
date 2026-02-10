@@ -16,6 +16,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 
 @Slf4j
@@ -39,16 +43,26 @@ public class AuthService {
     private final RefreshTokenService refreshTokenService;
     private final GoogleTokenService googleTokenService;
     private final KakaoTokenService kakaoTokenService;
+    @Value("${kakao.scopes:account_email}")
+    private String kakaoScopes;
 
     /**
      * 카카오 로그인 URL redirect
      */
     public String getKakaoAuthorizeUrl(String state) {
-        return "https://kauth.kakao.com/oauth/authorize"
-                + "?client_id=" + clientId
-                + "&redirect_uri=" + redirectUri
-                + "&response_type=code"
-                + (state != null ? "&state=" + state : "");
+        StringBuilder builder = new StringBuilder("https://kauth.kakao.com/oauth/authorize")
+                .append("?client_id=").append(clientId)
+                .append("&redirect_uri=").append(redirectUri)
+                .append("&response_type=code");
+        if (kakaoScopes != null && !kakaoScopes.isBlank()) {
+            String encodedScopes = URLEncoder.encode(kakaoScopes.trim(), StandardCharsets.UTF_8);
+            builder.append("&scope=").append(encodedScopes);
+        }
+
+        if (state != null) {
+            builder.append("&state=").append(state);
+        }
+        return builder.toString();
     }
 
     @Transactional
