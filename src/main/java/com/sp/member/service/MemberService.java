@@ -132,17 +132,19 @@ public class MemberService {
     }
 
     /**
-     * 마케팅 동의 상태 토글
+     * 마케팅 동의 상태 설정
      */
     @Transactional
-    public MemberInfoResponse toggleMarketingAgreementById(Long id) {
+    public MemberInfoResponse updateMarketingAgreementById(Long id, boolean agreed) {
         Member member = findByIdOrThrow(id);
 
         boolean oldStatus = member.getMarketingAgreed();
-        boolean newStatus = !oldStatus;
-        member.updateMarketingAgreement(newStatus);
-
-        log.info("🔧 마케팅 동의 상태 변경 - ID: {}, {} -> {}", id, oldStatus, newStatus);
+        if (oldStatus != agreed) {
+            member.updateMarketingAgreement(agreed);
+            log.info("🔧 마케팅 동의 상태 변경 - ID: {}, {} -> {}", id, oldStatus, agreed);
+        } else {
+            log.info("ℹ️ 마케팅 동의 상태 변경 없음 - ID: {}, 현재 상태 유지 ({})", id, agreed);
+        }
 
         return MemberInfoResponse.from(member);
     }

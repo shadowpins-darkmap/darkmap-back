@@ -7,6 +7,7 @@ import com.sp.community.service.CommentService;
 import com.sp.community.service.UserNotificationService;
 import com.sp.exception.NicknameChangeException;
 import com.sp.member.dto.response.MemberInfoResponse;
+import com.sp.member.dto.request.MarketingAgreementRequest;
 import com.sp.member.dto.request.UpdateNicknameRequest;
 import com.sp.member.dto.response.UpdateNicknameResponse;
 import com.sp.member.entity.Member;
@@ -361,8 +362,8 @@ public class MemberController {
     }
 
     @Operation(
-            summary = "마케팅 광고 수신 동의 토글",
-            description = "현재 로그인한 사용자의 마케팅 광고 수신 동의 상태를 토글합니다. 동의 상태가 true면 false로, false면 true로 변경됩니다."
+            summary = "마케팅 광고 수신 동의 설정",
+            description = "현재 로그인한 사용자의 마케팅 광고 수신 동의 상태를 설정합니다."
     )
     @ApiResponses(value = {
             @ApiResponse(
@@ -438,8 +439,9 @@ public class MemberController {
             )
     })
     @PutMapping("/marketing-agreement")
-    public ResponseEntity<?> toggleMarketingAgreement(
-            @Parameter(hidden = true) @AuthenticationPrincipal Long memberId) {
+    public ResponseEntity<?> updateMarketingAgreement(
+            @Parameter(hidden = true) @AuthenticationPrincipal Long memberId,
+            @Valid @RequestBody MarketingAgreementRequest request) {
 
         if (memberId == null) {
             return ResponseEntity.status(401).body(Map.of(
@@ -449,7 +451,7 @@ public class MemberController {
         }
 
         try {
-            MemberInfoResponse response = memberService.toggleMarketingAgreementById(memberId);
+            MemberInfoResponse response = memberService.updateMarketingAgreementById(memberId, request.getAgreed());
             boolean isAgreed = response.getMarketingAgreed();
 
             return ResponseEntity.ok(Map.of(
