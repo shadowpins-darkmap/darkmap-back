@@ -158,10 +158,14 @@ public class MemberController {
                 "level", member.getLevel(),
                 "loginCount", member.getLoginCount(),
                 "joinedAt", member.getJoinedAt(),
-                "myCommentCount", commentService.getMemberCommentCount(memberId),   // 사용자의 총 댓글 수
-                "newCommentsCount", userActivitySummaryDTO.getNewCommentsCount(),   // 새 댓글 수 (48시간)
-                "newLikesCount", userActivitySummaryDTO.getNewLikesCount(),         // 새 추천 수 (48시간)
-                "approvedReportCount", boardService.getApprovedReportCountByAuthor(memberId) // 사용자의 제보 중 지도에 등록된 수
+                "myCommentCount", 0,   // 사용자의 총 댓글 수
+                "newCommentsCount", 0,   // 새 댓글 수 (48시간)
+                "newLikesCount", 0,         // 새 추천 수 (48시간)
+                "approvedReportCount", 0 // 사용자의 제보 중 지도에 등록된 수
+                //"myCommentCount", commentService.getMemberCommentCount(memberId),   // 사용자의 총 댓글 수
+                //"newCommentsCount", userActivitySummaryDTO.getNewCommentsCount(),   // 새 댓글 수 (48시간)
+                //"newLikesCount", userActivitySummaryDTO.getNewLikesCount(),         // 새 추천 수 (48시간)
+                //"approvedReportCount", boardService.getApprovedReportCountByAuthor(memberId) // 사용자의 제보 중 지도에 등록된 수
         ));
     }
 
