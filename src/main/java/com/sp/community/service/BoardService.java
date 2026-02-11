@@ -419,6 +419,11 @@ public class BoardService {
         if (!boardEntity.getAuthorId().equals(currentUserId)) {
             throw new UnauthorizedException("게시글 삭제 권한이 없습니다.");
         }
+
+        LocalDateTime lastWithdrawnAt = getLastWithdrawnAt(currentUserId);
+        if (lastWithdrawnAt != null && !boardEntity.getCreatedAt().isAfter(lastWithdrawnAt)) {
+            throw new UnauthorizedException("탈퇴 이전에 작성한 게시글은 삭제할 수 없습니다.");
+        }
     }
 
     /**
