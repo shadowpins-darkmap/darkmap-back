@@ -21,8 +21,10 @@ import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.time.Instant;
 
 @Slf4j
@@ -37,6 +39,8 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
     private final GoogleTokenService googleTokenService;
     private final EnvironmentResolver environmentResolver;
     private final AuthBridgeResponder authBridgeResponder;
+    @Value("${auth.rejoin-hold-days:7}")
+    private int rejoinHoldDays;
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request,
@@ -57,7 +61,8 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
             Member member = memberService.saveIfNotExists(email, providerId, AuthType.GOOGLE);
 
             // 2. 탈퇴 여부 검증
-            if (member.getIsDeleted()) {
+            Duration hold = Duration.ofDays(rejoinHoldDays);
+            if (member.isRejoinBlocked(hold)) {
                 log.warn("🚫 탈퇴한 회원의 구글 로그인 시도 차단 - ID: {}, Email: {}",
                         member.getId(), member.getEmail());
 

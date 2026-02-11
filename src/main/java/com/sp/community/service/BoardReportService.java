@@ -22,6 +22,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -429,13 +431,43 @@ public class BoardReportService {
     /**
      * 사용자 닉네임 조회 헬퍼 메서드
      */
-    private String getAuthorNickname(Long authorId) {
+    private String getAuthorNickname(Long authorId, LocalDateTime createdAt) {
+        if (authorId == null) return "알수없음";
+        if (isAuthorAnonymized(authorId, createdAt)) return "알수없음";
         try {
-            return memberRepository.findNicknameByMemberId(authorId)
-                    .orElse(authorId+"");
+            return memberRepository.findNicknameByMemberId(authorId).orElse("알수없음");
         } catch (Exception e) {
             log.warn("닉네임 조회 실패: authorId={}", authorId);
-            return authorId+"";
+            return "알수없음";
+        }
+    }
+
+    private boolean isAuthorDeleted(Long authorId) {
+        try {
+            return memberRepository.findIsDeletedByMemberId(authorId).orElse(false);
+        } catch (Exception e) {
+            log.warn("작성자 탈퇴 여부 조회 실패: authorId={}", authorId);
+            return false;
+        }
+    }
+
+    private boolean isAuthorAnonymized(Long authorId, LocalDateTime createdAt) {
+        if (authorId == null || createdAt == null) return true;
+        LocalDateTime lastWithdrawn = getLastWithdrawnAt(authorId);
+        if (lastWithdrawn == null) {
+            return isAuthorDeleted(authorId);
+        }
+        return !createdAt.isAfter(lastWithdrawn);
+    }
+
+    private LocalDateTime getLastWithdrawnAt(Long authorId) {
+        try {
+            return memberRepository.findLastWithdrawnAtByMemberId(authorId)
+                    .map(inst -> LocalDateTime.ofInstant(inst, ZoneOffset.UTC))
+                    .orElse(null);
+        } catch (Exception e) {
+            log.warn("lastWithdrawnAt 조회 실패: authorId={}", authorId);
+            return null;
         }
     }
 
@@ -447,8 +479,9 @@ public class BoardReportService {
                 .reportId(entity.getReportId())
                 .boardId(entity.getBoard().getBoardId())
                 .boardTitle(entity.getBoard().getTitle())
-                .boardAuthorNickname(getAuthorNickname(entity.getReporterId()))
+                .boardAuthorNickname(getAuthorNickname(entity.getBoard().getAuthorId(), entity.getBoard().getCreatedAt()))
                 .reporterId(entity.getReporterId())
+                .reporterNickname(getAuthorNickname(entity.getReporterId(), entity.getCreatedAt()))
                 .reportType(entity.getReportType())
                 .reportTypeDescription(entity.getReportType().getDescription())
                 .reason(entity.getReason())

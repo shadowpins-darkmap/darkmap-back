@@ -43,6 +43,11 @@ public class CommentReportVO {
     private String commentAuthorNickname;
 
     /**
+     * 신고자 닉네임
+     */
+    private String reporterNickname;
+
+    /**
      * 게시글 ID
      */
     private Long boardId;

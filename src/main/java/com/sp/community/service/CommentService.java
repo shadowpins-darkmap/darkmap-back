@@ -22,6 +22,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -192,7 +194,8 @@ public class CommentService {
                 pageRequestDTO.toCommentPageable() :
                 PageRequestDTO.builder().build().toCommentPageable();
 
-        Page<CommentEntity> commentPage = commentRepository.findByAuthorIdAndVisible(authorId, pageable);
+        LocalDateTime after = getLastWithdrawnAt(authorId);
+        Page<CommentEntity> commentPage = commentRepository.findByAuthorIdAndVisible(authorId, after, pageable);
 
         return commentPage.getContent().stream()
                 .map(comment -> convertToVO(comment, currentUserId))
@@ -310,7 +313,8 @@ public class CommentService {
      * 특정 사용자의 댓글 수 조회
      */
     public Long getMemberCommentCount(Long memberId) {
-        return commentRepository.countByAuthorIdAndNotDeleted(memberId);
+        LocalDateTime after = getLastWithdrawnAt(memberId);
+        return commentRepository.countByAuthorIdAndNotDeleted(memberId, after);
     }
 
     /**
@@ -342,14 +346,14 @@ public class CommentService {
                     .boardId(commentEntity.getBoard().getBoardId())
                     .commentContent(commentEntity.getContent())
                     .commentAuthorId(commentEntity.getAuthorId())
-                    .commentAuthorNickname(getAuthorNickname(commentEntity.getAuthorId()))
+                    .commentAuthorNickname(getAuthorDisplayName(commentEntity.getAuthorId(), commentEntity.getCreatedAt()))
                     .commentCreatedAt(commentEntity.getCreatedAt())
                     //.commentStatus(commentEntity.getStatus())
                     .isCommentReported(false) // 필요시 별도 조회
                     // 게시글 정보
                     .boardTitle(boardEntity != null ? boardEntity.getTitle() : "게시글 정보 없음")
                     //.boardCategory(boardEntity != null ? boardEntity.getCategory().name() : "UNKNOWN")
-                    .boardAuthorNickname(boardEntity != null ? getAuthorNickname(boardEntity.getAuthorId()) : "알 수 없음")
+                    .boardAuthorNickname(boardEntity != null ? getAuthorDisplayName(boardEntity.getAuthorId(), boardEntity.getCreatedAt()) : "알 수 없음")
                     //.boardStatus(boardEntity != null ? boardEntity.getStatus() : null)
                     .isBoardReported(false) // 필요시 별도 조회
                     .build();
@@ -362,26 +366,44 @@ public class CommentService {
         }
     }
 
-    /**
-     * 사용자 닉네임 조회 헬퍼 메서드
-     */
-    private String getAuthorNickname(Long authorId) {
+    /** 작성자 표시명: 탈퇴 상태나 마지막 탈퇴 시각 이전 작성물은 익명 처리 */
+    private String getAuthorDisplayName(Long authorId, LocalDateTime createdAt) {
+        if (authorId == null) return "알수없음";
+        if (isAuthorAnonymized(authorId, createdAt)) return "알수없음";
         try {
-            return memberRepository.findNicknameByMemberId(authorId)
-                    .orElse(authorId.toString());
+            return memberRepository.findNicknameByMemberId(authorId).orElse("알수없음");
         } catch (Exception e) {
             log.warn("닉네임 조회 실패: authorId={}", authorId);
-            return authorId.toString();
+            return "알수없음";
         }
     }
 
     private boolean isAuthorDeleted(Long authorId) {
         try {
-            return memberRepository.findIsDeletedByMemberId(authorId)
-                    .orElse(false);
+            return memberRepository.findIsDeletedByMemberId(authorId).orElse(false);
         } catch (Exception e) {
             log.warn("작성자 탈퇴 여부 조회 실패: authorId={}", authorId);
             return false;
+        }
+    }
+
+    private boolean isAuthorAnonymized(Long authorId, LocalDateTime createdAt) {
+        if (authorId == null || createdAt == null) return true;
+        LocalDateTime lastWithdrawn = getLastWithdrawnAt(authorId);
+        if (lastWithdrawn == null) {
+            return isAuthorDeleted(authorId);
+        }
+        return !createdAt.isAfter(lastWithdrawn);
+    }
+
+    private LocalDateTime getLastWithdrawnAt(Long authorId) {
+        try {
+            return memberRepository.findLastWithdrawnAtByMemberId(authorId)
+                    .map(inst -> LocalDateTime.ofInstant(inst, ZoneOffset.UTC))
+                    .orElse(null);
+        } catch (Exception e) {
+            log.warn("lastWithdrawnAt 조회 실패: authorId={}", authorId);
+            return null;
         }
     }
 
@@ -394,6 +416,11 @@ public class CommentService {
         if (!commentEntity.getAuthorId().equals(editorId)) {
             throw new UnauthorizedException("댓글 수정 권한이 없습니다.");
         }
+
+        LocalDateTime lastWithdrawnAt = getLastWithdrawnAt(editorId);
+        if (lastWithdrawnAt != null && !commentEntity.getCreatedAt().isAfter(lastWithdrawnAt)) {
+            throw new UnauthorizedException("탈퇴 이전에 작성한 댓글은 수정할 수 없습니다.");
+        }
     }
 
     /**
@@ -402,6 +429,11 @@ public class CommentService {
     private void validateDeletePermission(CommentEntity commentEntity, Long currentUserId) {
         if (!commentEntity.getAuthorId().equals(currentUserId)) {
             throw new UnauthorizedException("댓글 삭제 권한이 없습니다.");
+        }
+
+        LocalDateTime lastWithdrawnAt = getLastWithdrawnAt(currentUserId);
+        if (lastWithdrawnAt != null && !commentEntity.getCreatedAt().isAfter(lastWithdrawnAt)) {
+            throw new UnauthorizedException("탈퇴 이전에 작성한 댓글은 삭제할 수 없습니다.");
         }
     }
 
@@ -427,8 +459,9 @@ public class CommentService {
                 .boardId(entity.getBoard().getBoardId())
                 .content(entity.getContent())
                 .authorId(entity.getAuthorId())
-                .authorNickname(getAuthorNickname(entity.getAuthorId()))
+                .authorNickname(getAuthorDisplayName(entity.getAuthorId(), entity.getCreatedAt()))
                 .authorDeleted(isAuthorDeleted(entity.getAuthorId()))
+                .authorAnonymized(isAuthorAnonymized(entity.getAuthorId(), entity.getCreatedAt()))
                 .likeCount(entity.getLikeCount())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())

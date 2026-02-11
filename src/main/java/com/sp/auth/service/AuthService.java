@@ -21,6 +21,7 @@ import java.nio.charset.StandardCharsets;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.time.Duration;
 
 @Slf4j
 @Service
@@ -43,6 +44,8 @@ public class AuthService {
     private final RefreshTokenService refreshTokenService;
     private final GoogleTokenService googleTokenService;
     private final KakaoTokenService kakaoTokenService;
+    @Value("${auth.rejoin-hold-days:7}")
+    private int rejoinHoldDays;
     @Value("${kakao.scopes:account_email}")
     private String kakaoScopes;
 
@@ -81,11 +84,16 @@ public class AuthService {
                 AuthType.KAKAO
         );
 
-        // 3. 탈퇴 여부 검증
-        if (member.getIsDeleted()) {
+        // 3. 탈퇴 여부 및 유보기간 검증
+        Duration hold = Duration.ofDays(rejoinHoldDays);
+        if (member.isRejoinBlocked(hold)) {
             log.warn("🚫 탈퇴한 회원의 로그인 시도 차단 - ID: {}, Email: {}",
                     member.getId(), member.getEmail());
-            throw new WithdrawnMemberException("탈퇴한 회원은 재가입이 불가능합니다.");
+            Instant availableAt = member.getRejoinAvailableAt(hold);
+            String message = availableAt != null
+                    ? String.format("탈퇴한 회원은 %s 까지 재로그인이 불가능합니다.", availableAt)
+                    : "탈퇴한 회원은 재로그인이 불가능합니다.";
+            throw new WithdrawnMemberException(message);
         }
 
         // 4. JWT 토큰 생성

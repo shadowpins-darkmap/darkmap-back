@@ -52,6 +52,11 @@ public class CommentVO {
     private Boolean authorDeleted;
 
     /**
+     * 작성자 익명화 여부(탈퇴 이전 작성물)
+     */
+    private Boolean authorAnonymized;
+
+    /**
      * 좋아요 수
      */
     private Integer likeCount;

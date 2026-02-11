@@ -126,13 +126,14 @@ public class AuthController {
             ),
             @ApiResponse(
                     responseCode = "403",
-                    description = "탈퇴한 회원 - 재가입 불가",
+                    description = "탈퇴한 회원 - 재가입/재로그인 유보기간(기본 7일) 미경과",
                     content = @Content(
                             mediaType = "application/json",
                             examples = @ExampleObject(
                                     value = """
                                 {
-                                    "error": "WITHDRAWN_MEMBER"
+                                    "error": "WITHDRAWN_MEMBER",
+                                    "message": "탈퇴한 회원은 2026-02-18T12:34:00Z 까지 재로그인이 불가능합니다."
                                 }
                                 """
                             )

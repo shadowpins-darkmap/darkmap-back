@@ -38,6 +38,11 @@ public class BoardReportVO {
     private String boardAuthorNickname;
 
     /**
+     * 신고자 닉네임
+     */
+    private String reporterNickname;
+
+    /**
      * 신고자 ID
      */
     private Long reporterId;

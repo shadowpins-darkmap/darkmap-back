@@ -10,6 +10,7 @@ import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
+import java.time.Duration;
 import java.time.Instant;
 
 @Getter
@@ -65,6 +66,12 @@ public class Member {
 
     @Column(nullable = false, columnDefinition = "TINYINT(1) default 0")
     private Boolean isDeleted;
+
+    // 탈퇴 시각(재가입 유보기간 계산용)
+    private Instant withdrawnAt;
+
+    // 마지막 탈퇴 시각(재가입 후에도 과거 작성물 익명/권한 차단 기준)
+    private Instant lastWithdrawnAt;
 
     @Column(nullable = false, columnDefinition = "INT default 0")
     private Integer nicknameChangeCount;
@@ -170,6 +177,8 @@ public class Member {
      */
     public void softDelete() {
         this.isDeleted = true;
+        this.withdrawnAt = Instant.now();
+        this.lastWithdrawnAt = this.withdrawnAt;
     }
 
     /**
@@ -177,5 +186,32 @@ public class Member {
      */
     public void restore() {
         this.isDeleted = false;
+        this.withdrawnAt = null;
+        // lastWithdrawnAt은 유지 (과거 작성물 익명화 기준)
+    }
+
+    /**
+     * 재가입 유보기간이 남았는지 여부
+     */
+    public boolean isRejoinBlocked(Duration holdDuration) {
+        if (Boolean.FALSE.equals(this.isDeleted)) {
+            return false;
+        }
+
+        if (this.withdrawnAt == null) {
+            return true; // 탈퇴 시간 불명확하면 보수적으로 차단
+        }
+
+        return this.withdrawnAt.plus(holdDuration).isAfter(Instant.now());
+    }
+
+    /**
+     * 재가입 가능 시각 계산
+     */
+    public Instant getRejoinAvailableAt(Duration holdDuration) {
+        if (this.withdrawnAt == null) {
+            return null;
+        }
+        return this.withdrawnAt.plus(holdDuration);
     }
 }

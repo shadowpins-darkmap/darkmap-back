@@ -46,8 +46,8 @@ public interface BoardRepository extends JpaRepository<BoardEntity, Long> {
     /**
      * 작성자별 게시글 목록 조회
      */
-    @Query("SELECT b FROM BoardEntity b WHERE b.authorId = :authorId AND b.isDeleted = false ORDER BY b.createdAt DESC")
-    Page<BoardEntity> findByAuthorIdAndNotDeleted(@Param("authorId") Long authorId, Pageable pageable);
+    @Query("SELECT b FROM BoardEntity b WHERE b.authorId = :authorId AND b.isDeleted = false AND (:after IS NULL OR b.createdAt > :after) ORDER BY b.createdAt DESC")
+    Page<BoardEntity> findByAuthorIdAndNotDeleted(@Param("authorId") Long authorId, @Param("after") LocalDateTime after, Pageable pageable);
 
     /**
      * 제목으로 게시글 검색
@@ -152,8 +152,8 @@ public interface BoardRepository extends JpaRepository<BoardEntity, Long> {
     /**
      * 작성자별 게시글 수 조회
      */
-    @Query("SELECT COUNT(b) FROM BoardEntity b WHERE b.authorId = :authorId AND b.isDeleted = false")
-    Long countByAuthorIdAndNotDeleted(@Param("authorId") Long authorId);
+    @Query("SELECT COUNT(b) FROM BoardEntity b WHERE b.authorId = :authorId AND b.isDeleted = false AND (:after IS NULL OR b.createdAt > :after)")
+    Long countByAuthorIdAndNotDeleted(@Param("authorId") Long authorId, @Param("after") LocalDateTime after);
 
     /**
      * 특정 유저가 작성한 승인된 제보글 개수 조회

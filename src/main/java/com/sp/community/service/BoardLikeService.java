@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -281,23 +282,43 @@ public class BoardLikeService {
     /**
      * 사용자 닉네임 조회 헬퍼 메서드
      */
-    private String getAuthorNickname(Long authorId) {
+    private String getAuthorNickname(Long authorId, LocalDateTime createdAt) {
+        if (authorId == null) return "알수없음";
+        if (isAuthorAnonymized(authorId, createdAt)) return "알수없음";
         try {
-            return memberRepository.findNicknameByMemberId(authorId)
-                    .orElse(authorId.toString());
+            return memberRepository.findNicknameByMemberId(authorId).orElse("알수없음");
         } catch (Exception e) {
             log.warn("닉네임 조회 실패: authorId={}", authorId);
-            return authorId.toString();
+            return "알수없음";
         }
     }
 
     private boolean isAuthorDeleted(Long authorId) {
         try {
-            return memberRepository.findIsDeletedByMemberId(authorId)
-                    .orElse(false);
+            return memberRepository.findIsDeletedByMemberId(authorId).orElse(false);
         } catch (Exception e) {
             log.warn("작성자 탈퇴 여부 조회 실패: authorId={}", authorId);
             return false;
+        }
+    }
+
+    private boolean isAuthorAnonymized(Long authorId, LocalDateTime createdAt) {
+        if (authorId == null || createdAt == null) return true;
+        LocalDateTime lastWithdrawn = getLastWithdrawnAt(authorId);
+        if (lastWithdrawn == null) {
+            return isAuthorDeleted(authorId);
+        }
+        return !createdAt.isAfter(lastWithdrawn);
+    }
+
+    private LocalDateTime getLastWithdrawnAt(Long authorId) {
+        try {
+            return memberRepository.findLastWithdrawnAtByMemberId(authorId)
+                    .map(inst -> LocalDateTime.ofInstant(inst, ZoneOffset.UTC))
+                    .orElse(null);
+        } catch (Exception e) {
+            log.warn("lastWithdrawnAt 조회 실패: authorId={}", authorId);
+            return null;
         }
     }
 
@@ -313,8 +334,9 @@ public class BoardLikeService {
                 .title(entity.getTitle())
                 .authorId(entity.getAuthorId())
                 .content(entity.getContent())
-                .authorNickname(getAuthorNickname(entity.getAuthorId()))
+                .authorNickname(getAuthorNickname(entity.getAuthorId(), entity.getCreatedAt()))
                 .authorDeleted(isAuthorDeleted(entity.getAuthorId()))
+                .authorAnonymized(isAuthorAnonymized(entity.getAuthorId(), entity.getCreatedAt()))
                 .category(entity.getCategory())
                 .viewCount(entity.getViewCount())
                 .likeCount(entity.getLikeCount())

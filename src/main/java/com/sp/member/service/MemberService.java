@@ -7,11 +7,15 @@ import com.sp.member.entity.Member;
 import com.sp.auth.enums.AuthType;
 import com.sp.member.repository.MemberRepository;
 import com.sp.member.util.NicknameGenerator;
+import com.sp.exception.WithdrawnMemberException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.springframework.beans.factory.annotation.Value;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Optional;
 
 @Slf4j
@@ -21,6 +25,9 @@ public class MemberService {
 
     private final MemberRepository memberRepository;
     private final BadWordFilter badWordFilter;
+
+    @Value("${auth.rejoin-hold-days:7}")
+    private int rejoinHoldDays;
 
     /**
      * 회원 저장 (없으면 생성, 있으면 로그인 카운트 증가)
@@ -35,6 +42,32 @@ public class MemberService {
 
         if (emailExists.isPresent()) {
             Member existing = emailExists.get();
+
+            // 탈퇴 회원 재가입 처리
+            if (existing.getIsDeleted()) {
+                Duration hold = Duration.ofDays(rejoinHoldDays);
+                if (existing.isRejoinBlocked(hold)) {
+                    Instant availableAt = existing.getRejoinAvailableAt(hold);
+                    String message = availableAt != null
+                            ? String.format("탈퇴한 회원은 %s 까지 재가입이 불가능합니다.", availableAt)
+                            : "탈퇴한 회원은 재가입이 불가능합니다.";
+                    throw new WithdrawnMemberException(message);
+                }
+
+                // 소셜 유형 또는 provider ID가 다르면 중복 이메일 정책 유지
+                if (existing.getType() != type || !existing.getMemberId().equals(userId)) {
+                    log.error("❌ 탈퇴 회원 이메일 중복 - 기존: {}, 시도: {}", existing.getType(), type);
+                    throw new IllegalStateException("이미 다른 소셜 로그인으로 가입된 이메일입니다.");
+                }
+
+                // 유보기간 경과: 계정 복구 후 로그인 처리
+                existing.restore();
+                existing.increaseLoginVisitCount();
+                Member restored = memberRepository.save(existing);
+                log.info("✅ 탈퇴 회원 복구 및 로그인 - ID: {}, 소요시간: {}ms",
+                        restored.getId(), System.currentTimeMillis() - startTime);
+                return restored;
+            }
 
             // 동일한 소셜 로그인 계정인 경우
             if (existing.getType() == type && existing.getMemberId().equals(userId)) {

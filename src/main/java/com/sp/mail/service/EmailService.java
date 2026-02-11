@@ -63,7 +63,7 @@ public class EmailService {
 
             // 신고자 닉네임 조회
             String reporterNickname = memberRepository.findNicknameByMemberId(createDTO.getReporterId())
-                    .orElse(createDTO.getReporterId().toString());
+                    .orElse("알수없음");
 
             // 이메일 발송
             ReportEmailDto reportDto = createBoardReportEmailDto(
@@ -207,10 +207,10 @@ public class EmailService {
             }
 
             // 신고자 정보 조회
-            String reporterNickname = "알 수 없음";
+            String reporterNickname = "알수없음";
             try {
                 reporterNickname = memberRepository.findNicknameByMemberId(createDTO.getReporterId())
-                        .orElse(createDTO.getReporterId().toString());
+                        .orElse("알수없음");
             } catch (Exception e) {
                 log.warn("신고자 닉네임 조회 실패: reporterId={}", createDTO.getReporterId());
             }
@@ -336,12 +336,13 @@ public class EmailService {
      * 댓글 작성자 표시명 반환
      */
     private String getCommentAuthorDisplayName(Long authorId) {
+        if (authorId == null) return "알수없음";
         try {
             return memberRepository.findNicknameByMemberId(authorId)
-                    .orElse(authorId.toString());
+                    .orElse("알수없음");
         } catch (Exception e) {
             log.warn("닉네임 조회 실패: authorId={}", authorId);
-            return authorId.toString();
+            return "알수없음";
         }
     }
 

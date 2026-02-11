@@ -11,6 +11,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -60,8 +61,8 @@ public interface CommentRepository extends JpaRepository<CommentEntity, Long> {
     /**
      * 작성자별 댓글 목록 조회
      */
-    @Query("SELECT c FROM CommentEntity c WHERE c.authorId = :authorId AND c.isDeleted = false AND c.isHidden = false ORDER BY c.createdAt DESC")
-    Page<CommentEntity> findByAuthorIdAndVisible(@Param("authorId") Long authorId, Pageable pageable);
+    @Query("SELECT c FROM CommentEntity c WHERE c.authorId = :authorId AND c.isDeleted = false AND c.isHidden = false AND (:after IS NULL OR c.createdAt > :after) ORDER BY c.createdAt DESC")
+    Page<CommentEntity> findByAuthorIdAndVisible(@Param("authorId") Long authorId, @Param("after") LocalDateTime after, Pageable pageable);
 
     /**
      * 특정 게시글의 댓글 수 조회 (보이는 댓글만)
@@ -120,8 +121,8 @@ public interface CommentRepository extends JpaRepository<CommentEntity, Long> {
     /**
      * 작성자별 댓글 수 조회
      */
-    @Query("SELECT COUNT(c) FROM CommentEntity c WHERE c.authorId = :authorId AND c.isDeleted = false")
-    Long countByAuthorIdAndNotDeleted(@Param("authorId") Long authorId);
+    @Query("SELECT COUNT(c) FROM CommentEntity c WHERE c.authorId = :authorId AND c.isDeleted = false AND (:after IS NULL OR c.createdAt > :after)")
+    Long countByAuthorIdAndNotDeleted(@Param("authorId") Long authorId, @Param("after") LocalDateTime after);
 
     /**
      * 오늘 작성된 댓글 수 조회

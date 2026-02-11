@@ -42,4 +42,10 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
      */
     @Query("SELECT m.isDeleted FROM Member m WHERE m.id = :memberId")
     Optional<Boolean> findIsDeletedByMemberId(Long memberId);
+
+    /**
+     * 회원 ID로 마지막 탈퇴 시각 조회
+     */
+    @Query("SELECT m.lastWithdrawnAt FROM Member m WHERE m.id = :memberId")
+    Optional<java.time.Instant> findLastWithdrawnAtByMemberId(Long memberId);
 }

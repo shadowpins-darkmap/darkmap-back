@@ -24,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -317,7 +318,8 @@ public class BoardService {
                 pageRequestDTO.toBoardPageable() :
                 PageRequestDTO.builder().build().toBoardPageable();
 
-        Page<BoardEntity> boardPage = boardRepository.findByAuthorIdAndNotDeleted(authorId, pageable);
+        LocalDateTime after = getLastWithdrawnAt(authorId);
+        Page<BoardEntity> boardPage = boardRepository.findByAuthorIdAndNotDeleted(authorId, after, pageable);
 
         List<BoardVO> boardVOs = boardPage.getContent().stream()
                 .map(this::convertToVO)
@@ -403,6 +405,11 @@ public class BoardService {
         if (!boardEntity.getAuthorId().equals(editorId)) {
             throw new UnauthorizedException("게시글 수정 권한이 없습니다.");
         }
+
+        LocalDateTime lastWithdrawnAt = getLastWithdrawnAt(editorId);
+        if (lastWithdrawnAt != null && !boardEntity.getCreatedAt().isAfter(lastWithdrawnAt)) {
+            throw new UnauthorizedException("탈퇴 이전에 작성한 게시글은 수정할 수 없습니다.");
+        }
     }
 
     /**
@@ -421,12 +428,15 @@ public class BoardService {
         // 이미지 파일 존재 여부 확인
         Optional<FileUploadResponse> imageInfo = fileService.getBoardImageInfo(entity.getBoardId());
 
+        boolean anonymized = isAuthorAnonymized(entity.getAuthorId(), entity.getCreatedAt());
+
         BoardVO vo = BoardVO.builder()
                 .boardId(entity.getBoardId())
                 .title(entity.getTitle())
                 .authorId(entity.getAuthorId())
-                .authorNickname(getAuthorNickname(entity.getAuthorId()))
+                .authorNickname(anonymized ? "알수없음" : getAuthorNickname(entity.getAuthorId()))
                 .authorDeleted(isAuthorDeleted(entity.getAuthorId()))
+                .authorAnonymized(anonymized)
                 .content(entity.getContent())
                 .category(entity.getCategory())
                 .viewCount(entity.getViewCount())
@@ -457,13 +467,16 @@ public class BoardService {
         // 이미지 파일 정보 조회
         Optional<FileUploadResponse> imageInfo = fileService.getBoardImageInfo(entity.getBoardId());
 
+        boolean anonymized = isAuthorAnonymized(entity.getAuthorId(), entity.getCreatedAt());
+
         BoardDetailVO detailVO = BoardDetailVO.builder()
                 .boardId(entity.getBoardId())
                 .title(entity.getTitle())
                 .content(entity.getContent())
                 .authorId(entity.getAuthorId())
-                .authorNickname(getAuthorNickname(entity.getAuthorId()))
+                .authorNickname(anonymized ? "알수없음" : getAuthorNickname(entity.getAuthorId()))
                 .authorDeleted(isAuthorDeleted(entity.getAuthorId()))
+                .authorAnonymized(anonymized)
                 .category(entity.getCategory())
                 .reportType(entity.getReportType())
                 .reportLocation(entity.getReportLocation())
@@ -529,17 +542,27 @@ public class BoardService {
     public Optional<BoardVO> getBoardById(Long boardId) {
         return boardRepository.findByIdAndNotDeleted(boardId).map(this::convertToBoardVO);
     }
+
+    /**
+     * 내 게시글 수 (탈퇴 이후 작성분만)
+     */
+    public Long countMyBoards(Long authorId) {
+        LocalDateTime after = getLastWithdrawnAt(authorId);
+        return boardRepository.countByAuthorIdAndNotDeleted(authorId, after);
+    }
     /**
      * Entity를 VO로 변환 (예시 - 실제로는 기존 변환 로직 사용)
      */
     private BoardVO convertToBoardVO(BoardEntity entity) {
+        boolean anonymized = isAuthorAnonymized(entity.getAuthorId(), entity.getCreatedAt());
         return BoardVO.builder()
                 .boardId(entity.getBoardId())
                 .title(entity.getTitle())
                 .authorId(entity.getAuthorId())
                 .category(entity.getCategory())
-                .authorNickname(getAuthorNickname(entity.getAuthorId()))
+                .authorNickname(anonymized ? "알수없음" : getAuthorNickname(entity.getAuthorId()))
                 .authorDeleted(isAuthorDeleted(entity.getAuthorId()))
+                .authorAnonymized(anonymized)
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
                 .isReported(entity.getIsReported())
@@ -551,12 +574,20 @@ public class BoardService {
      * 사용자 닉네임 조회 헬퍼 메서드
      */
     private String getAuthorNickname(Long authorId) {
+        if (authorId == null) {
+            return "알수없음";
+        }
+
+        if (isAuthorDeleted(authorId)) {
+            return "알수없음";
+        }
+
         try {
             return memberRepository.findNicknameByMemberId(authorId)
-                    .orElse(authorId.toString());
+                    .orElse("알수없음");
         } catch (Exception e) {
             log.warn("닉네임 조회 실패: authorId={}", authorId);
-            return authorId.toString();
+            return "알수없음";
         }
     }
 
@@ -567,6 +598,31 @@ public class BoardService {
         } catch (Exception e) {
             log.warn("작성자 탈퇴 여부 조회 실패: authorId={}", authorId);
             return false;
+        }
+    }
+
+    /**
+     * 탈퇴 기준 이후 작성물인지 확인
+     */
+    private boolean isAuthorAnonymized(Long authorId, LocalDateTime contentCreatedAt) {
+        if (authorId == null || contentCreatedAt == null) {
+            return true;
+        }
+        LocalDateTime lastWithdrawn = getLastWithdrawnAt(authorId);
+        if (lastWithdrawn == null) {
+            return isAuthorDeleted(authorId); // 삭제 상태면 익명 처리
+        }
+        return !contentCreatedAt.isAfter(lastWithdrawn);
+    }
+
+    private LocalDateTime getLastWithdrawnAt(Long authorId) {
+        try {
+            return memberRepository.findLastWithdrawnAtByMemberId(authorId)
+                    .map(inst -> LocalDateTime.ofInstant(inst, ZoneOffset.UTC))
+                    .orElse(null);
+        } catch (Exception e) {
+            log.warn("lastWithdrawnAt 조회 실패: authorId={}", authorId);
+            return null;
         }
     }
 }
