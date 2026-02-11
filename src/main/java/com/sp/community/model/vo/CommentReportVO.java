@@ -2,6 +2,7 @@ package com.sp.community.model.vo;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.sp.community.persistent.entity.CommentReportEntity;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -30,6 +31,7 @@ public class CommentReportVO {
     /**
      * 댓글 내용 (미리보기)
      */
+    @Schema(description = "신고 대상 댓글 내용(미리보기)")
     private String commentContent;
 
     /**
@@ -40,11 +42,13 @@ public class CommentReportVO {
     /**
      * 댓글 작성자 닉네임
      */
+    @Schema(description = "신고 대상 댓글 작성자 닉네임(익명화 가능)")
     private String commentAuthorNickname;
 
     /**
      * 신고자 닉네임
      */
+    @Schema(description = "신고자 닉네임")
     private String reporterNickname;
 
     /**

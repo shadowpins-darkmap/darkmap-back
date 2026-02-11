@@ -1,6 +1,7 @@
 package com.sp.community.model.vo;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -44,16 +45,19 @@ public class CommentVO {
     /**
      * 작성자 닉네임
      */
+    @Schema(description = "작성자 닉네임 (익명화 시 '알수없음')")
     private String authorNickname;
 
     /**
      * 작성자 탈퇴 여부
      */
+    @Schema(description = "작성자 탈퇴 여부")
     private Boolean authorDeleted;
 
     /**
      * 작성자 익명화 여부(탈퇴 이전 작성물)
      */
+    @Schema(description = "탈퇴 이전 작성물 여부에 따른 익명화 플래그")
     private Boolean authorAnonymized;
 
     /**

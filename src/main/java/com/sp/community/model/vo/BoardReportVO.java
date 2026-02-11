@@ -2,6 +2,7 @@ package com.sp.community.model.vo;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.sp.community.persistent.entity.BoardReportEntity;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -30,16 +31,19 @@ public class BoardReportVO {
     /**
      * 게시글 제목
      */
+    @Schema(description = "신고 대상 게시글 제목")
     private String boardTitle;
 
     /**
      * 게시글 작성자 닉네임
      */
+    @Schema(description = "신고 대상 게시글 작성자 닉네임(익명화 가능)")
     private String boardAuthorNickname;
 
     /**
      * 신고자 닉네임
      */
+    @Schema(description = "신고자 닉네임")
     private String reporterNickname;
 
     /**
