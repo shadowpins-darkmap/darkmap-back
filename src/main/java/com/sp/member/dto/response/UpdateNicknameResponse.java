@@ -20,6 +20,9 @@ public class UpdateNicknameResponse {
     @Schema(description = "응답 메시지", example = "닉네임이 성공적으로 변경되었습니다.")
     private String message;
 
+    @Schema(description = "에러 코드", example = "INVALID_NICKNAME")
+    private String code;
+
     @Getter
     @Builder
     @Schema(description = "변경된 사용자 정보")

@@ -324,6 +324,7 @@ public class MemberController {
                     UpdateNicknameResponse.builder()
                             .success(false)
                             .message(e.getMessage())
+                            .code(e.getErrorCode())
                             .build()
             );
         } catch (IllegalArgumentException e) {
@@ -331,6 +332,7 @@ public class MemberController {
                     UpdateNicknameResponse.builder()
                             .success(false)
                             .message(e.getMessage())
+                            .code("INVALID_NICKNAME")
                             .build()
             );
         } catch (IllegalStateException e) {
@@ -338,6 +340,7 @@ public class MemberController {
                     UpdateNicknameResponse.builder()
                             .success(false)
                             .message(e.getMessage())
+                            .code("NICKNAME_DUPLICATE")
                             .build()
             );
         }
