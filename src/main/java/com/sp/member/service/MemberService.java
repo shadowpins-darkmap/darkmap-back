@@ -17,6 +17,7 @@ import org.springframework.beans.factory.annotation.Value;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
+import java.util.regex.Pattern;
 
 @Slf4j
 @Service
@@ -206,6 +207,19 @@ public class MemberService {
         return memberRepository.save(member);
     }
 
+    // 허용: 한글, 영문, 숫자, 하이픈, 언더스코어, 마침표, 한글 자음/모음, 일본어, 한자 (내부 공백 1칸 허용)
+    private static final Pattern ALLOWED_NICKNAME_PATTERN =
+            Pattern.compile("^[가-힣ㄱ-ㅎㅏ-ㅣa-zA-Z0-9_\\-.]+( [가-힣ㄱ-ㅎㅏ-ㅣa-zA-Z0-9_\\-.]+)*$");
+
+    // SQL/HTML 인젝션 위험 패턴
+    private static final Pattern INJECTION_PATTERN =
+            Pattern.compile("--|/\\*|\\*/|<script|<iframe|<img|onclick|onerror", Pattern.CASE_INSENSITIVE);
+
+    // 사칭 방지 키워드
+    private static final Pattern IMPERSONATION_PATTERN =
+            Pattern.compile("admin|관리자|운영자|운영팀|system|master|moderator|operator",
+                    Pattern.CASE_INSENSITIVE);
+
     /**
      * 닉네임 유효성 검증
      */
@@ -213,6 +227,21 @@ public class MemberService {
         // 길이 체크
         if (nickname.length() < 2 || nickname.length() > 25) {
             throw new IllegalArgumentException("닉네임은 2자 이상 25자 이하로 입력해주세요.");
+        }
+
+        // 특수문자, 이모지, 공백(탭 등) 검증 — 허용 패턴 외 문자 거부
+        if (!ALLOWED_NICKNAME_PATTERN.matcher(nickname).matches()) {
+            throw new IllegalArgumentException("닉네임에 사용할 수 없는 문자가 포함되어 있습니다.");
+        }
+
+        // SQL/HTML 인젝션 패턴 차단
+        if (INJECTION_PATTERN.matcher(nickname).find()) {
+            throw new IllegalArgumentException("닉네임에 사용할 수 없는 문자가 포함되어 있습니다.");
+        }
+
+        // 사칭 방지 키워드 차단
+        if (IMPERSONATION_PATTERN.matcher(nickname).find()) {
+            throw new IllegalArgumentException("닉네임에 사용할 수 없는 단어가 포함되어 있습니다.");
         }
 
         // 욕설 필터링
