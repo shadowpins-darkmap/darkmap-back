@@ -47,13 +47,13 @@ public class MemberService {
             // 탈퇴 회원 재가입 처리
             if (existing.getIsDeleted()) {
                 Duration hold = Duration.ofDays(rejoinHoldDays);
-                if (existing.isRejoinBlocked(hold)) {
-                    Instant availableAt = existing.getRejoinAvailableAt(hold);
-                    String message = availableAt != null
-                            ? String.format("탈퇴한 회원은 %s 까지 재가입이 불가능합니다.", availableAt)
-                            : "탈퇴한 회원은 재가입이 불가능합니다.";
-                    throw new WithdrawnMemberException(message);
-                }
+//                if (existing.isRejoinBlocked(hold)) {
+//                    Instant availableAt = existing.getRejoinAvailableAt(hold);
+//                    String message = availableAt != null
+//                            ? String.format("탈퇴한 회원은 %s 까지 재가입이 불가능합니다.", availableAt)
+//                            : "탈퇴한 회원은 재가입이 불가능합니다.";
+//                    throw new WithdrawnMemberException(message);
+//                }
 
                 // 소셜 유형 또는 provider ID가 다르면 중복 이메일 정책 유지
                 if (existing.getType() != type || !existing.getMemberId().equals(userId)) {

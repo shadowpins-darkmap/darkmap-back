@@ -62,13 +62,13 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
 
             // 2. 탈퇴 여부 검증
             Duration hold = Duration.ofDays(rejoinHoldDays);
-            if (member.isRejoinBlocked(hold)) {
-                log.warn("🚫 탈퇴한 회원의 구글 로그인 시도 차단 - ID: {}, Email: {}",
-                        member.getId(), member.getEmail());
-
-                redirectWithError(response, envConfig, "WITHDRAWN_MEMBER");
-                return;
-            }
+//            if (member.isRejoinBlocked(hold)) {
+//                log.warn("🚫 탈퇴한 회원의 구글 로그인 시도 차단 - ID: {}, Email: {}",
+//                        member.getId(), member.getEmail());
+//
+//                redirectWithError(response, envConfig, "WITHDRAWN_MEMBER");
+//                return;
+//            }
 
             // 3. JWT 토큰 생성
             String accessToken = jwtTokenProvider.createAccessToken(member.getId(), member.getLevel());
