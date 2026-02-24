@@ -77,24 +77,12 @@ public class AuthService {
         KakaoTokenResponse tokenResponse = kakaoOAuthClient.getTokenResponse(code);
         KakaoUserInfo userInfo = kakaoOAuthClient.getUserInfo(tokenResponse.getAccessToken());
 
-        // 2. 회원 저장/조회
+        // 2. 회원 저장/조회 (재가입 정책 내포)
         Member member = memberService.saveIfNotExists(
                 userInfo.getEmail(),
                 userInfo.getUserId(),
                 AuthType.KAKAO
         );
-
-        // 3. 탈퇴 여부 및 유보기간 검증
-        Duration hold = Duration.ofDays(rejoinHoldDays);
-//        if (member.isRejoinBlocked(hold)) {
-//            log.warn("🚫 탈퇴한 회원의 로그인 시도 차단 - ID: {}, Email: {}",
-//                    member.getId(), member.getEmail());
-//            Instant availableAt = member.getRejoinAvailableAt(hold);
-//            String message = availableAt != null
-//                    ? String.format("탈퇴한 회원은 %s 까지 재로그인이 불가능합니다.", availableAt)
-//                    : "탈퇴한 회원은 재로그인이 불가능합니다.";
-//            throw new WithdrawnMemberException(message);
-//        }
 
         // 4. JWT 토큰 생성
         String jwt = jwtTokenProvider.createAccessToken(member.getId(), member.getLevel());

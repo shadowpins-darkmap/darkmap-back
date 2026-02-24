@@ -19,12 +19,12 @@ import java.time.Instant;
 @AllArgsConstructor
 @Builder
 @Entity
-@Table(name = "member", indexes = {
-        @Index(name = "idx_member_email", columnList = "email"),
-        @Index(name = "idx_member_member_id", columnList = "member_id"),
-        @Index(name = "idx_member_user_number", columnList = "user_number"),
-        @Index(name = "idx_member_auth_type", columnList = "type")
-})
+    @Table(name = "member", indexes = {
+            @Index(name = "idx_member_email", columnList = "email"),
+            @Index(name = "idx_member_member_id", columnList = "member_id"),
+            @Index(name = "idx_member_user_number", columnList = "user_number"),
+            @Index(name = "idx_member_auth_type", columnList = "type")
+    })
 @EntityListeners(AuditingEntityListener.class)
 public class Member {
 
@@ -32,7 +32,7 @@ public class Member {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "member_id", nullable = false, unique = true, length = 100)
+    @Column(name = "member_id", nullable = false, length = 100)
     private String memberId;
 
     @Column(name = "user_number", unique = true)
@@ -42,7 +42,7 @@ public class Member {
     @Column(nullable = false, length = 20)
     private AuthType type;
 
-    @Column(nullable = false, unique = true, length = 255)
+    @Column(nullable = false, length = 255)
     private String email;
 
     @Column(length = 50)
@@ -179,6 +179,8 @@ public class Member {
         this.isDeleted = true;
         this.withdrawnAt = Instant.now();
         this.lastWithdrawnAt = this.withdrawnAt;
+        this.nickname = "알수없음";
+        this.memberId = "탈퇴유저";
     }
 
     /**
@@ -198,20 +200,22 @@ public class Member {
             return false;
         }
 
-        if (this.withdrawnAt == null) {
+        Instant base = this.lastWithdrawnAt != null ? this.lastWithdrawnAt : this.withdrawnAt;
+        if (base == null) {
             return true; // 탈퇴 시간 불명확하면 보수적으로 차단
         }
 
-        return this.withdrawnAt.plus(holdDuration).isAfter(Instant.now());
+        return base.plus(holdDuration).isAfter(Instant.now());
     }
 
     /**
      * 재가입 가능 시각 계산
      */
     public Instant getRejoinAvailableAt(Duration holdDuration) {
-        if (this.withdrawnAt == null) {
+        Instant base = this.lastWithdrawnAt != null ? this.lastWithdrawnAt : this.withdrawnAt;
+        if (base == null) {
             return null;
         }
-        return this.withdrawnAt.plus(holdDuration);
+        return base.plus(holdDuration);
     }
 }
