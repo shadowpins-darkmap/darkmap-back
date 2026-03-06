@@ -237,13 +237,13 @@ public class BoardUpdateDTO {
     }
 
     /**
-     * 카테고리 정리 (앞뒤 공백 제거, 소문자 변환)
+     * 카테고리 정리 (앞뒤 공백 제거, 대문자 변환)
      */
     public String getNormalizedCategory() {
         if (category == null || category.trim().isEmpty()) {
             return null;
         }
-        return category.trim().toLowerCase();
+        return category.trim().toUpperCase();
     }
 
     /**
@@ -350,13 +350,14 @@ public class BoardUpdateDTO {
 
         // 허용된 카테고리 목록
         List<String> allowedCategories = Arrays.asList(
-                "general", "notice", "qna", "tech", "free", "review"
+                "GENERAL", "NOTICE", "QNA", "TECH", "FREE", "REVIEW", "INCIDENTREPORT"
         );
 
         String normalizedCategory = getNormalizedCategory();
         if (!allowedCategories.contains(normalizedCategory)) {
             throw new IllegalArgumentException("유효하지 않은 카테고리입니다. " +
-                    "허용된 카테고리: " + String.join(", ", allowedCategories));
+                    "허용된 카테고리: " + String.join(", ",
+                    allowedCategories.stream().map(String::toLowerCase).toList()));
         }
     }
 
