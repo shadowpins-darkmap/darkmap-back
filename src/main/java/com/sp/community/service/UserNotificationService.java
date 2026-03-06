@@ -91,6 +91,7 @@ public class UserNotificationService {
         Page<CommentEntity> commentPage = commentRepository.findNewCommentsOnUserBoards(userId, since, pageable);
 
         return commentPage.getContent().stream()
+                .filter(this::isActiveNotificationComment)
                 .map(this::convertToNewCommentNotificationDTO)
                 .collect(Collectors.toList());
     }
@@ -115,6 +116,7 @@ public class UserNotificationService {
         Page<BoardLikeEntity> likePage = boardLikeRepository.findNewLikesOnUserBoards(userId, since, pageable);
 
         return likePage.getContent().stream()
+                .filter(this::isActiveNotificationLike)
                 .map(this::convertToNewLikeNotificationDTO)
                 .collect(Collectors.toList());
     }
@@ -214,6 +216,20 @@ public class UserNotificationService {
             return isAuthorDeleted(authorId);
         }
         return !createdAt.isAfter(lastWithdrawn);
+    }
+
+    private boolean isActiveNotificationComment(CommentEntity comment) {
+        if (comment == null) return false;
+        if (Boolean.TRUE.equals(comment.getIsDeleted())) return false;
+        if (comment.getBoard() == null) return false;
+        return !comment.getBoard().isDeleted();
+    }
+
+    private boolean isActiveNotificationLike(BoardLikeEntity like) {
+        if (like == null) return false;
+        if (Boolean.TRUE.equals(like.getIsDeleted())) return false;
+        if (like.getBoard() == null) return false;
+        return !like.getBoard().isDeleted();
     }
 
     private boolean isAuthorDeleted(Long authorId) {
