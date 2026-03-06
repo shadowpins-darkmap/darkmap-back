@@ -26,7 +26,7 @@ public class GoogleTokenService {
      */
     @Transactional
     public void saveTokens(Long memberId, String accessToken, String refreshToken, Instant expiresAt) {
-        Optional<GoogleToken> existingToken = googleTokenRepository.findById(memberId);
+        Optional<GoogleToken> existingToken = googleTokenRepository.findByMember_Id(memberId);
 
         if (existingToken.isPresent()) {
             GoogleToken token = existingToken.get();
@@ -55,7 +55,7 @@ public class GoogleTokenService {
      */
     @Transactional
     public void updateAccessToken(Long memberId, String accessToken, Instant expiresAt) {
-        GoogleToken token = googleTokenRepository.findById(memberId)
+        GoogleToken token = googleTokenRepository.findByMember_Id(memberId)
                 .orElseThrow(() -> new IllegalArgumentException("저장된 구글 토큰이 없습니다: " + memberId));
 
         token.updateAccessToken(accessToken, expiresAt);
@@ -67,14 +67,14 @@ public class GoogleTokenService {
      * memberId로 토큰 조회
      */
     public Optional<GoogleToken> findByMemberId(Long memberId) {
-        return googleTokenRepository.findById(memberId);
+        return googleTokenRepository.findByMember_Id(memberId);
     }
 
     /**
      * 유효한 토큰만 반환 (만료되지 않은 토큰)
      */
     public Optional<GoogleToken> findValidTokenByMemberId(Long memberId) {
-        Optional<GoogleToken> tokenOpt = googleTokenRepository.findById(memberId);
+        Optional<GoogleToken> tokenOpt = googleTokenRepository.findByMember_Id(memberId);
 
         if (tokenOpt.isPresent()) {
             GoogleToken token = tokenOpt.get();
@@ -116,7 +116,7 @@ public class GoogleTokenService {
      */
     @Transactional
     public void invalidateToken(Long memberId) {
-        Optional<GoogleToken> tokenOpt = googleTokenRepository.findById(memberId);
+        Optional<GoogleToken> tokenOpt = googleTokenRepository.findByMember_Id(memberId);
 
         if (tokenOpt.isPresent()) {
             GoogleToken token = tokenOpt.get();
@@ -131,7 +131,7 @@ public class GoogleTokenService {
      */
     @Transactional
     public void deleteByMemberId(Long memberId) {
-        googleTokenRepository.deleteById(memberId);
+        googleTokenRepository.deleteByMember_Id(memberId);
         log.info("구글 토큰 삭제 완료 - 사용자 ID: {}", memberId);
     }
 

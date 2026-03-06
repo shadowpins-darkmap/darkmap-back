@@ -8,9 +8,14 @@ import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface GoogleTokenRepository extends JpaRepository<GoogleToken, Long> {
+
+    Optional<GoogleToken> findByMember_Id(Long memberId);
+
+    void deleteByMember_Id(Long memberId);
 
     /**
      * 만료 임박 토큰 조회
