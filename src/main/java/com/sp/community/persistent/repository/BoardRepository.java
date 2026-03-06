@@ -239,7 +239,7 @@ public interface BoardRepository extends JpaRepository<BoardEntity, Long> {
     @Query("SELECT b FROM BoardEntity b WHERE " +
             "(b.title LIKE %:keyword% OR b.content LIKE %:keyword%) " +
             "AND b.isDeleted = false " +
-            "AND (b.category <> 'INCIDENTREPORT' OR b.reportApproved = true)")
+            "AND (b.category <> '제보' OR b.reportApproved = true)")
     List<BoardEntity> searchByKeyword(@Param("keyword") String keyword);
 
     /**
@@ -248,7 +248,7 @@ public interface BoardRepository extends JpaRepository<BoardEntity, Long> {
     @Query("SELECT b FROM BoardEntity b WHERE " +
             "b.isDeleted = false " +
             "AND (:category IS NULL OR b.category = :category) " +
-            "AND (b.category <> 'INCIDENTREPORT' OR b.reportApproved = true) " +
+            "AND (b.category <> '제보' OR b.reportApproved = true) " +
             "ORDER BY b.createdAt DESC")
     Page<BoardEntity> findRecentBoards(@Param("category") String category, Pageable pageable);
 }

@@ -161,7 +161,7 @@ public class BoardVO {
      * INCIDENTREPORT 카테고리인지 확인
      */
     public boolean isIncidentReportCategory() {
-        return "INCIDENTREPORT".equals(category);
+        return "제보".equals(category);
     }
 
     /**

@@ -174,15 +174,12 @@ public class BoardCreateDTO {
     }
 
     /**
-     * 카테고리 정리 (앞뒤 공백 제거, 소문자 변환)
+     * 카테고리 정리 (앞뒤 공백 제거, 한글 카테고리로 정규화)
      */
     @JsonIgnore
     @Schema(hidden = true)
     public String getNormalizedCategory() {
-        if (category == null || category.trim().isEmpty()) {
-            return null;
-        }
-        return category.trim().toUpperCase();
+        return normalizeCategoryValue(category);
     }
 
     /**
@@ -195,6 +192,24 @@ public class BoardCreateDTO {
             return "";
         }
         return filename.substring(filename.lastIndexOf(".") + 1);
+    }
+
+    private String normalizeCategoryValue(String rawCategory) {
+        if (rawCategory == null || rawCategory.trim().isEmpty()) {
+            return null;
+        }
+
+        String trimmed = rawCategory.trim();
+        String lower = trimmed.toLowerCase();
+        return switch (lower) {
+            case "notice" -> "공지";
+            case "incidentreport" -> "제보";
+            case "memory" -> "기억";
+            case "worry" -> "고민";
+            case "ask", "qna" -> "질문";
+            case "etc", "general" -> "미분류";
+            default -> trimmed;
+        };
     }
 
     // ============ 검증 메서드 ============

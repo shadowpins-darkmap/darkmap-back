@@ -456,7 +456,7 @@ public class BoardService {
                 .build();
 
         // ✅ 사건제보 필드 추가 설정
-        if ("INCIDENTREPORT".equals(entity.getCategory().toUpperCase())) {
+        if (BoardEntity.CATEGORY_INCIDENTREPORT.equals(entity.getCategory())) {
             vo.setReportType(entity.getReportType());
             vo.setReportLocation(entity.getReportLocation());
             vo.setReportUrl(entity.getReportUrl());

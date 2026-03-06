@@ -39,25 +39,25 @@ public class BoardEntity {
     //기억 MEMORY
     //고민 WORRY
     //질문 ASK
-    //사건제보 INCIDENTREPORT
+    //사건제보
     //미분류 ETC
 
-    // INCIDENTREPORT 카테고리 전용 필드들
+    // 제보 카테고리 전용 필드들
     @Column(name = "report_type", length = 50)
-    private String reportType; // 제보 유형 (INCIDENTREPORT 카테고리일 때만 사용)
+    private String reportType; // 제보 유형 (제보 카테고리일 때만 사용)
 
     @Column(name = "report_location", length = 50)
-    private String reportLocation; // 제보 위치 (INCIDENTREPORT 카테고리일 때만 사용)
+    private String reportLocation; // 제보 위치 (제보 카테고리일 때만 사용)
 
     @Column(name = "report_url", length = 255)
-    private String reportUrl; // 뉴스기사 (INCIDENTREPORT 카테고리일 때만 사용)
+    private String reportUrl; // 뉴스기사 (제보 카테고리일 때만 사용)
 
     @Builder.Default
     @Column(name = "report_approved", nullable = false, columnDefinition = "boolean default false")
-    private Boolean reportApproved = false; // 제보 승인 여부 (INCIDENTREPORT 카테고리일 때만 사용)
+    private Boolean reportApproved = false; // 제보 승인 여부 (제보 카테고리일 때만 사용)
 
     @Column(name = "report_approved_at")
-    private LocalDateTime reportApprovedAt; // 제보 승인 시간 (INCIDENTREPORT 카테고리일 때만 사용)
+    private LocalDateTime reportApprovedAt; // 제보 승인 시간 (제보 카테고리일 때만 사용)
 
     @Builder.Default
     @Column(name = "view_count", nullable = false, columnDefinition = "int default 0")
@@ -114,7 +114,7 @@ public class BoardEntity {
     public static final String CATEGORY_MEMORY = "MEMORY";
     public static final String CATEGORY_WORRY = "WORRY";
     public static final String CATEGORY_ASK = "ASK";
-    public static final String CATEGORY_INCIDENTREPORT = "INCIDENTREPORT";
+    public static final String CATEGORY_INCIDENTREPORT = "제보";
     public static final String CATEGORY_ETC = "ETC";
 
     // JPA 콜백 메서드
@@ -145,7 +145,7 @@ public class BoardEntity {
             this.reportApproved = false;
         }
 
-        // INCIDENTREPORT 카테고리가 아닌 경우 제보 관련 필드 null 처리
+        // 제보 카테고리가 아닌 경우 제보 관련 필드 null 처리
         if (!CATEGORY_INCIDENTREPORT.equals(this.category)) {
             this.reportType = null;
             this.reportLocation = null;
@@ -158,7 +158,7 @@ public class BoardEntity {
     public void preUpdate() {
         this.updatedAt = LocalDateTime.now();
 
-        // INCIDENTREPORT 카테고리가 아닌 경우 제보 관련 필드 null 처리
+        // 제보 카테고리가 아닌 경우 제보 관련 필드 null 처리
         if (!CATEGORY_INCIDENTREPORT.equals(this.category)) {
             this.reportType = null;
             this.reportLocation = null;
@@ -217,7 +217,7 @@ public class BoardEntity {
         this.category = category;
         this.updatedAt = LocalDateTime.now();
 
-        // INCIDENTREPORT 카테고리가 아닌 경우 제보 관련 필드 null 처리
+        // 제보 카테고리가 아닌 경우 제보 관련 필드 null 처리
         if (!CATEGORY_INCIDENTREPORT.equals(category)) {
             this.reportType = null;
             this.reportLocation = null;
@@ -263,7 +263,7 @@ public class BoardEntity {
         this.category = category;
         this.updatedAt = LocalDateTime.now();
 
-        // INCIDENTREPORT 카테고리가 아닌 경우 제보 관련 필드 null 처리
+        // 제보 카테고리가 아닌 경우 제보 관련 필드 null 처리
         if (!CATEGORY_INCIDENTREPORT.equals(category)) {
             this.reportType = null;
             this.reportLocation = null;
@@ -273,7 +273,7 @@ public class BoardEntity {
     }
 
     /**
-     * 제보 정보 수정 (INCIDENTREPORT 카테고리일 때만)
+     * 제보 정보 수정 (제보 카테고리일 때만)
      */
     public void updateReportInfo(String reportType, String reportLocation) {
         if (CATEGORY_INCIDENTREPORT.equals(this.category)) {
@@ -284,7 +284,7 @@ public class BoardEntity {
     }
 
     /**
-     * 제보 승인 (INCIDENTREPORT 카테고리일 때만)
+     * 제보 승인 (제보 카테고리일 때만)
      */
     public void approveReport(String approvedBy) {
         if (CATEGORY_INCIDENTREPORT.equals(this.category)) {
@@ -295,7 +295,7 @@ public class BoardEntity {
     }
 
     /**
-     * 제보 승인 취소 (INCIDENTREPORT 카테고리일 때만)
+     * 제보 승인 취소 (제보 카테고리일 때만)
      */
     public void disapproveReport() {
         if (CATEGORY_INCIDENTREPORT.equals(this.category)) {

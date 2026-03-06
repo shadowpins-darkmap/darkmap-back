@@ -237,13 +237,10 @@ public class BoardUpdateDTO {
     }
 
     /**
-     * 카테고리 정리 (앞뒤 공백 제거, 대문자 변환)
+     * 카테고리 정리 (앞뒤 공백 제거, 한글 카테고리로 정규화)
      */
     public String getNormalizedCategory() {
-        if (category == null || category.trim().isEmpty()) {
-            return null;
-        }
-        return category.trim().toUpperCase();
+        return normalizeCategoryValue(category);
     }
 
     /**
@@ -278,6 +275,24 @@ public class BoardUpdateDTO {
         return filename.substring(filename.lastIndexOf(".") + 1);
     }
 
+    private String normalizeCategoryValue(String rawCategory) {
+        if (rawCategory == null || rawCategory.trim().isEmpty()) {
+            return null;
+        }
+
+        String trimmed = rawCategory.trim();
+        String lower = trimmed.toLowerCase();
+        return switch (lower) {
+            case "notice" -> "공지";
+            case "incidentreport" -> "제보";
+            case "memory" -> "기억";
+            case "worry" -> "고민";
+            case "ask", "qna" -> "질문";
+            case "etc", "general" -> "미분류";
+            default -> trimmed;
+        };
+    }
+
     public String getTrimmedReportType() {
         return reportType != null ? reportType.trim() : null;
     }
@@ -287,7 +302,7 @@ public class BoardUpdateDTO {
     }
 
     public boolean isIncidentReportCategory() {
-        return "INCIDENTREPORT".equals(getNormalizedCategory());
+        return "제보".equals(getNormalizedCategory());
     }
 
     // ============ 검증 메서드 ============
@@ -350,14 +365,13 @@ public class BoardUpdateDTO {
 
         // 허용된 카테고리 목록
         List<String> allowedCategories = Arrays.asList(
-                "GENERAL", "NOTICE", "QNA", "TECH", "FREE", "REVIEW", "INCIDENTREPORT"
+                "공지", "제보", "기억", "고민", "질문", "미분류"
         );
 
         String normalizedCategory = getNormalizedCategory();
         if (!allowedCategories.contains(normalizedCategory)) {
             throw new IllegalArgumentException("유효하지 않은 카테고리입니다. " +
-                    "허용된 카테고리: " + String.join(", ",
-                    allowedCategories.stream().map(String::toLowerCase).toList()));
+                    "허용된 카테고리: " + String.join(", ", allowedCategories));
         }
     }
 

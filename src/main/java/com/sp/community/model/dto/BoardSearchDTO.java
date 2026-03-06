@@ -204,13 +204,24 @@ public class BoardSearchDTO {
     }
 
     /**
-     * 정리된 카테고리 반환
+     * 정리된 카테고리 반환 (한글 카테고리로 정규화)
      */
     public String getNormalizedCategory() {
         if (category == null || category.trim().isEmpty()) {
             return null;
         }
-        return category.trim().toLowerCase();
+
+        String trimmed = category.trim();
+        String lower = trimmed.toLowerCase();
+        return switch (lower) {
+            case "notice" -> "공지";
+            case "incidentreport" -> "제보";
+            case "memory" -> "기억";
+            case "worry" -> "고민";
+            case "ask", "qna" -> "질문";
+            case "etc", "general" -> "미분류";
+            default -> trimmed;
+        };
     }
 
     /**

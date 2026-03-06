@@ -440,17 +440,19 @@ public class BoardDetailVO {
     // 카테고리 표시명 반환
     public String getDisplayCategory() {
         if (category == null || category.trim().isEmpty()) {
-            return "일반";
+            return "미분류";
         }
 
-        return switch (category.toLowerCase()) {
-            case "notice" -> "공지사항";
+        String trimmed = category.trim();
+        String lower = trimmed.toLowerCase();
+        return switch (lower) {
+            case "notice" -> "공지";
+            case "incidentreport" -> "제보";
             case "memory" -> "기억";
             case "worry" -> "고민";
-            case "ask" -> "질문";
-            case "incidentreport" -> "사건제보";  // 추가
-            case "etc" -> "미분류";
-            default -> category;
+            case "ask", "qna" -> "질문";
+            case "etc", "general" -> "미분류";
+            default -> trimmed;
         };
     }
 
