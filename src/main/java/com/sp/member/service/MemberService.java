@@ -27,70 +27,49 @@ public class MemberService {
     private final MemberRepository memberRepository;
     private final BadWordFilter badWordFilter;
 
-    @Value("${auth.rejoin-hold-days:7}")
-    private int rejoinHoldDays;
+    @Value("${auth.rejoin-hold-minutes:1}") // 테스트를 위해 1분으로 설정
+    private int rejoinHoldMinutes;
 
     /**
-     * 회원 저장 (없으면 생성, 있으면 로그인 카운트 증가)
+     * 회원 저장 (없으면 새로 생성, 재가입 정책 적용)
      */
     @Transactional
     public Member saveIfNotExists(String email, String userId, AuthType type) {
         long startTime = System.currentTimeMillis();
         log.info("💾 회원 저장 시작 - email: {}, type: {}", email, type);
 
-        // 1. 기존 회원 조회
-        Optional<Member> emailExists = memberRepository.findByEmail(email);
+        Optional<Member> emailExists = memberRepository.findTopByEmailOrderByIdDesc(email);
 
         if (emailExists.isPresent()) {
             Member existing = emailExists.get();
 
-            // 탈퇴 회원 재가입 처리
-            if (existing.getIsDeleted()) {
-                Duration hold = Duration.ofDays(rejoinHoldDays);
-//                if (existing.isRejoinBlocked(hold)) {
-//                    Instant availableAt = existing.getRejoinAvailableAt(hold);
-//                    String message = availableAt != null
-//                            ? String.format("탈퇴한 회원은 %s 까지 재가입이 불가능합니다.", availableAt)
-//                            : "탈퇴한 회원은 재가입이 불가능합니다.";
-//                    throw new WithdrawnMemberException(message);
-//                }
-
-                // 소셜 유형 또는 provider ID가 다르면 중복 이메일 정책 유지
-                if (existing.getType() != type || !existing.getMemberId().equals(userId)) {
-                    log.error("❌ 탈퇴 회원 이메일 중복 - 기존: {}, 시도: {}", existing.getType(), type);
-                    throw new IllegalStateException("이미 다른 소셜 로그인으로 가입된 이메일입니다.");
+            if (!existing.getIsDeleted()) {
+                // 활성 회원: 동일 소셜+provider ID면 로그인 처리, 아니면 충돌 처리
+                if (existing.getType() == type && existing.getMemberId().equals(userId)) {
+                    existing.increaseLoginVisitCount();
+                    Member saved = memberRepository.save(existing);
+                    log.info("✅ 기존 회원 로그인 완료 - ID: {}, 소요시간: {}ms",
+                            saved.getId(), System.currentTimeMillis() - startTime);
+                    return saved;
                 }
-
-                // 유보기간 경과: 계정 복구 후 로그인 처리
-                existing.restore();
-                existing.increaseLoginVisitCount();
-                Member restored = memberRepository.save(existing);
-                log.info("✅ 탈퇴 회원 복구 및 로그인 - ID: {}, 소요시간: {}ms",
-                        restored.getId(), System.currentTimeMillis() - startTime);
-                return restored;
+                throw new IllegalStateException("이미 다른 소셜 로그인으로 가입된 이메일입니다.");
             }
 
-            // 동일한 소셜 로그인 계정인 경우
-            if (existing.getType() == type && existing.getMemberId().equals(userId)) {
-                existing.increaseLoginVisitCount();
-                Member saved = memberRepository.save(existing);
-
-                log.info("✅ 기존 회원 로그인 완료 - ID: {}, 소요시간: {}ms",
-                        saved.getId(), System.currentTimeMillis() - startTime);
-                return saved;
+            Duration hold = Duration.ofMinutes(rejoinHoldMinutes);
+            if (existing.isRejoinBlocked(hold)) {
+                Instant availableAt = existing.getRejoinAvailableAt(hold);
+                String message = availableAt != null
+                        ? String.format("탈퇴한 회원은 %s 까지 재가입이 불가능합니다.", availableAt)
+                        : "탈퇴한 회원은 재가입이 불가능합니다.";
+                throw new WithdrawnMemberException(message);
             }
-
-            // 이메일은 같은데 다른 소셜 로그인인 경우
-            log.error("❌ 중복 이메일 - 기존: {}, 시도: {}", existing.getType(), type);
-            throw new IllegalStateException("이미 다른 소셜 로그인으로 가입된 이메일입니다.");
         }
 
-        // 2. 신규 회원 가입 - userNumber 조회
+        // 신규 회원 가입 - userNumber 조회
         Integer lastUserNumber = memberRepository.findMaxUserNumber();
         int userNumber = (lastUserNumber != null ? lastUserNumber : 0) + 1;
         String nickname = NicknameGenerator.generateNickname(userNumber);
 
-        // 3. 회원 저장
         Member newMember = memberRepository.save(Member.builder()
                 .email(email)
                 .memberId(userId)
@@ -278,17 +257,4 @@ public class MemberService {
         return memberRepository.count();
     }
 
-    /**
-     * 활성 회원 수 조회
-     */
-    public long getActiveMemberCount() {
-        return memberRepository.countByIsDeleted(false);
-    }
-
-    /**
-     * 탈퇴 회원 수 조회
-     */
-    public long getWithdrawnMemberCount() {
-        return memberRepository.countByIsDeleted(true);
-    }
 }

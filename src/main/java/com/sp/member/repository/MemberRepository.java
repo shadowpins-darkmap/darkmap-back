@@ -13,7 +13,7 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
     /**
      * 이메일로 조회
      */
-    Optional<Member> findByEmail(String email);
+    Optional<Member> findTopByEmailOrderByIdDesc(String email);
 
     /**
      * 최대 userNumber 조회
@@ -25,11 +25,6 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
      * 닉네임 중복 체크 (자신 제외)
      */
     boolean existsByNicknameAndIdNot(String nickname, Long id);
-
-    /**
-     * 탈퇴 여부로 카운트
-     */
-    long countByIsDeleted(Boolean isDeleted);
 
     /**
      * 회원 ID로 닉네임 조회 (커뮤니티용)
